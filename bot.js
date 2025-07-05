@@ -149,6 +149,11 @@ async function makeCommit() {
     }
 
     try {
+        // Configure git identity terlebih dahulu
+        await git.addConfig('user.name', 'iam-rizz');
+        await git.addConfig('user.email', 'rizky@mct.co.id');
+        addLog('⚙️  Git identity configured', 'GIT');
+        
         // Fetch repository URL
         const remote = await git.remote(['-v']);
         addLog('🔗 Connected to repository', 'GIT');
