@@ -1,17 +1,40 @@
-name: Daily Commit
+name: Smart Daily Commits
 
 on:
   schedule:
-     - cron: '0 0 * * *'     # 07:00 WIB
+     # Jalankan setiap jam dari 06:00-23:00 WIB (23:00-16:00 UTC)
+     - cron: '0 23 * * *'    # 06:00 WIB
+     - cron: '30 0 * * *'    # 07:30 WIB  
+     - cron: '15 1 * * *'    # 08:15 WIB
+     - cron: '45 2 * * *'    # 09:45 WIB
+     - cron: '20 3 * * *'    # 10:20 WIB
      - cron: '0 4 * * *'     # 11:00 WIB
+     - cron: '40 4 * * *'    # 11:40 WIB
+     - cron: '10 5 * * *'    # 12:10 WIB
+     - cron: '50 5 * * *'    # 12:50 WIB
+     - cron: '25 6 * * *'    # 13:25 WIB
      - cron: '0 7 * * *'     # 14:00 WIB
+     - cron: '35 7 * * *'    # 14:35 WIB
+     - cron: '15 8 * * *'    # 15:15 WIB
+     - cron: '45 8 * * *'    # 15:45 WIB
+     - cron: '20 9 * * *'    # 16:20 WIB
      - cron: '0 10 * * *'    # 17:00 WIB
+     - cron: '40 10 * * *'   # 17:40 WIB
+     - cron: '10 11 * * *'   # 18:10 WIB
+     - cron: '30 11 * * *'   # 18:30 WIB
+     - cron: '55 11 * * *'   # 18:55 WIB
+     - cron: '25 12 * * *'   # 19:25 WIB
+     - cron: '0 13 * * *'    # 20:00 WIB
+     - cron: '35 13 * * *'   # 20:35 WIB
      - cron: '0 14 * * *'    # 21:00 WIB
-     - cron: '1 17 * * *'    # 00:01 WIB (next day)
-  workflow_dispatch: # bisa dijalankan manual juga
+     - cron: '30 14 * * *'   # 21:30 WIB
+     - cron: '15 15 * * *'   # 22:15 WIB
+     - cron: '45 15 * * *'   # 22:45 WIB
+     - cron: '0 16 * * *'    # 23:00 WIB
+  workflow_dispatch: # Manual trigger tetap tersedia
 
 jobs:
-  update-and-commit:
+  smart-commit:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,18 +49,27 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Run update script
+    - name: Run smart update script
       run: node bot.js
 
-    - name: Commit changes
+    - name: Check for changes and commit
       run: |
         git config user.name "iam-rizz"
         git config user.email "rizky@mct.co.id"
-        git add .
-        git commit -m "Daily update" || echo "No changes to commit"
+        
+        # Check if there are any changes
+        if git diff --quiet && git diff --staged --quiet; then
+          echo "No changes detected, skipping commit"
+        else
+          echo "Changes detected, committing..."
+          git add .
+          # Bot script already handled the commit, so we just push if needed
+          git push origin main || echo "Nothing to push or already up to date"
+        fi
 
-    - name: Push changes
+    - name: Push changes (if any)
       uses: ad-m/github-push-action@v0.8.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: main
+      if: success()
