@@ -71,7 +71,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 7) + 6 // Random 6-12
+            targetCommits: Math.floor(Math.random() * 7) + 8 // Random 8-14
         };
         
         // Log new day
