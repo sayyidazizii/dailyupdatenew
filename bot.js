@@ -73,6 +73,16 @@ function shouldCommitNow() {
             count: 0,
             targetCommits: Math.floor(Math.random() * 7) + 6 // Random 6-12
         };
+        
+        // Log new day
+        const filePath = path.join(__dirname, 'daily_update.txt');
+        const timestamp = new Date().toLocaleString('en-US', { 
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: 'short', 
+            day: '2-digit'
+        });
+        fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
     
     // Commit jika belum mencapai target dan dengan probabilitas
@@ -89,14 +99,7 @@ function shouldCommitNow() {
     return shouldCommit;
 }
 
-async function makeCommit() {
-    // Cek apakah harus commit sekarang
-    if (!shouldCommitNow()) {
-        console.log('Skipping commit this time - maintaining natural frequency');
-        return;
-    }
-
-    // Update file dengan konten yang lebih natural
+function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
     const timestamp = new Date().toLocaleString('en-US', { 
         timeZone: 'Asia/Jakarta',
@@ -105,30 +108,72 @@ async function makeCommit() {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
+        second: '2-digit',
         hour12: false
     });
     
-    const activity = getRandomActivity();
-    const updateContent = `[${timestamp} WIB] Completed ${activity}\n`;
+    const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
+    fs.appendFileSync(filePath, logEntry);
+    console.log(`${type}: ${message}`);
+}
+
+async function makeCommit() {
+    addLog('🤖 Bot execution started', 'SYSTEM');
     
-    fs.appendFileSync(filePath, updateContent);
-    console.log(`Added activity: ${activity}`);
+    // Cek apakah harus commit sekarang
+    if (!shouldCommitNow()) {
+        addLog('⏭️  Skipping commit this time - maintaining natural frequency', 'SKIP');
+        addLog('📊 Daily commit frequency management active', 'INFO');
+        return;
+    }
+
+    // Generate aktivitas dan log
+    const activity = getRandomActivity();
+    addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
+    
+    // Simulasi progress dengan beberapa log entries
+    const progressMessages = [
+        '🔍 Analyzing requirements',
+        '⚡ Implementing solution', 
+        '🧪 Running tests',
+        '✅ Task completed successfully'
+    ];
+    
+    // Random progress logs (1-3 entries)
+    const numLogs = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < numLogs; i++) {
+        if (i < progressMessages.length) {
+            addLog(progressMessages[i], 'PROGRESS');
+        }
+    }
 
     try {
         // Fetch repository URL
         const remote = await git.remote(['-v']);
-        console.log('Repository URL:', remote);
+        addLog('🔗 Connected to repository', 'GIT');
 
         // Git operations dengan commit message random
         const commitMsg = getRandomCommitMessage();
-        await git.add('./*');
-        await git.commit(commitMsg);
-        await git.push('origin', 'main');
+        addLog(`📝 Preparing commit: "${commitMsg}"`, 'GIT');
         
-        console.log(`✅ Successfully committed with message: "${commitMsg}"`);
+        await git.add('./*');
+        addLog('📦 Files staged for commit', 'GIT');
+        
+        await git.commit(commitMsg);
+        addLog('💾 Changes committed locally', 'GIT');
+        
+        await git.push('origin', 'main');
+        addLog('🚀 Changes pushed to remote repository', 'SUCCESS');
+        
+        addLog(`✨ Commit completed successfully: "${commitMsg}"`, 'SUCCESS');
+        
     } catch (error) {
+        addLog(`❌ Git operation failed: ${error.message}`, 'ERROR');
         console.error('Failed to commit and push changes:', error);
     }
+    
+    addLog('🏁 Bot execution finished', 'SYSTEM');
+    addLog('─'.repeat(60), 'SEPARATOR');
 }
 
 makeCommit();

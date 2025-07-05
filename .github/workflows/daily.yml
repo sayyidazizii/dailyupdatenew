@@ -50,21 +50,38 @@ jobs:
       run: npm install
 
     - name: Run smart update script
-      run: node bot.js
+      run: |
+        echo "🚀 Starting smart daily commit bot..."
+        echo "📅 Current time: $(date)"
+        echo "🔄 Running bot logic..."
+        node bot.js
+        echo "✅ Bot execution completed"
 
     - name: Check for changes and commit
       run: |
         git config user.name "iam-rizz"
         git config user.email "rizky@mct.co.id"
         
+        echo "🔍 Checking for repository changes..."
+        
         # Check if there are any changes
         if git diff --quiet && git diff --staged --quiet; then
-          echo "No changes detected, skipping commit"
+          echo "📝 No changes detected, skipping commit"
+          echo "⏭️  Bot decided not to commit this time (smart frequency control)"
         else
-          echo "Changes detected, committing..."
+          echo "📦 Changes detected, proceeding with commit..."
           git add .
-          # Bot script already handled the commit, so we just push if needed
-          git push origin main || echo "Nothing to push or already up to date"
+          
+          # Check if commit was already made by bot
+          if git diff --staged --quiet; then
+            echo "✅ Commit already handled by bot script"
+          else
+            echo "🔄 Additional changes found, committing..."
+            git commit -m "Workflow: Additional file updates" || echo "No additional commit needed"
+          fi
+          
+          echo "🚀 Pushing changes to remote..."
+          git push origin main || echo "✅ Nothing to push or already up to date"
         fi
 
     - name: Push changes (if any)
