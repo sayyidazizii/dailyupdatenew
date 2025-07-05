@@ -59,8 +59,8 @@ jobs:
 
     - name: Check for changes and commit
       run: |
-        git config user.name "iam-rizz"
-        git config user.email "rizky@mct.co.id"
+        git config --global user.name "iam-rizz"
+        git config --global user.email "rizky@mct.co.id"
         
         echo "🔍 Checking for repository changes..."
         
