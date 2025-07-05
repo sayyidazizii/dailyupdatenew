@@ -118,15 +118,16 @@ function addLog(message, type = 'INFO') {
 }
 
 async function makeCommit() {
-    addLog('🤖 Bot execution started', 'SYSTEM');
-    
-    // Cek apakah harus commit sekarang
+    // Cek apakah harus commit sekarang DULU sebelum menulis log apapun
     if (!shouldCommitNow()) {
-        addLog('⏭️  Skipping commit this time - maintaining natural frequency', 'SKIP');
-        addLog('📊 Daily commit frequency management active', 'INFO');
-        return;
+        console.log('⏭️  Skipping commit this time - maintaining natural frequency');
+        console.log('📊 Daily commit frequency management active');
+        return; // Keluar tanpa menulis log ke file
     }
 
+    // Baru tulis log kalau memang akan commit
+    addLog('🤖 Bot execution started', 'SYSTEM');
+    
     // Generate aktivitas dan log
     const activity = getRandomActivity();
     addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');

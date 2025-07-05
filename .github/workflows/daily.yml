@@ -77,7 +77,34 @@ jobs:
             echo "✅ Commit already handled by bot script"
           else
             echo "🔄 Additional changes found, committing..."
-            git commit -m "Workflow: Additional file updates" || echo "No additional commit needed"
+            # Get random commit message from bot.js array
+            COMMIT_MSG=$(node -e "
+              const messages = [
+                '📝 Daily activity update',
+                '🔄 Regular maintenance commit',
+                '✨ Fresh daily changes', 
+                '🚀 Automated sync update',
+                '📊 Progress tracking update',
+                '🔧 System maintenance log',
+                '💫 Daily workflow commit',
+                '⚡ Quick status update',
+                '🌟 Regular check-in',
+                '🎯 Daily milestone update',
+                '🔥 Continuous improvement',
+                '💡 Daily insights update',
+                '🚧 Work in progress sync',
+                '📈 Performance tracking',
+                '🎨 Daily refinements',
+                '🛠️ Routine optimization',
+                '💪 Daily grind update',
+                '🌈 Creative progress sync',
+                '⭐ Excellence pursuit update',
+                '🏆 Achievement tracking'
+              ];
+              console.log(messages[Math.floor(Math.random() * messages.length)]);
+            ")
+            echo "📝 Using commit message: $COMMIT_MSG"
+            git commit -m "$COMMIT_MSG" || echo "No additional commit needed"
           fi
           
           echo "🚀 Pushing changes to remote..."
