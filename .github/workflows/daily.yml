@@ -1,8 +1,9 @@
-name: Smart Daily Commits
+name: Smart Daily Commits (8-15/day)
 
 on:
   schedule:
      # Jalankan setiap jam dari 06:00-23:00 WIB (23:00-16:00 UTC)
+     # Target: 8-15 commits per hari dengan smart frequency control
      - cron: '0 23 * * *'    # 06:00 WIB
      - cron: '30 0 * * *'    # 07:30 WIB  
      - cron: '15 1 * * *'    # 08:15 WIB
@@ -106,9 +107,6 @@ jobs:
             echo "📝 Using commit message: $COMMIT_MSG"
             git commit -m "$COMMIT_MSG" || echo "No additional commit needed"
           fi
-          
-          echo "🚀 Pushing changes to remote..."
-          git push origin main || echo "✅ Nothing to push or already up to date"
         fi
 
     - name: Push changes (if any)

@@ -71,7 +71,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 4) + 3 
+            targetCommits: Math.floor(Math.random() * 8) + 8 // Random 8-15
         };
         
         // Log new day
@@ -148,36 +148,7 @@ async function makeCommit() {
         }
     }
 
-    try {
-        // Configure git identity terlebih dahulu
-        await git.addConfig('user.name', 'iam-rizz');
-        await git.addConfig('user.email', 'rizky@mct.co.id');
-        addLog('⚙️  Git identity configured', 'GIT');
-        
-        // Fetch repository URL
-        const remote = await git.remote(['-v']);
-        addLog('🔗 Connected to repository', 'GIT');
-
-        // Git operations dengan commit message random
-        const commitMsg = getRandomCommitMessage();
-        addLog(`📝 Preparing commit: "${commitMsg}"`, 'GIT');
-        
-        await git.add('./*');
-        addLog('📦 Files staged for commit', 'GIT');
-        
-        await git.commit(commitMsg);
-        addLog('💾 Changes committed locally', 'GIT');
-        
-        await git.push('origin', 'main');
-        addLog('🚀 Changes pushed to remote repository', 'SUCCESS');
-        
-        addLog(`✨ Commit completed successfully: "${commitMsg}"`, 'SUCCESS');
-        
-    } catch (error) {
-        addLog(`❌ Git operation failed: ${error.message}`, 'ERROR');
-        console.error('Failed to commit and push changes:', error);
-    }
-    
+    // Bot hanya menulis log, biarkan workflow yang handle git operations
     addLog('🏁 Bot execution finished', 'SYSTEM');
     addLog('─'.repeat(60), 'SEPARATOR');
 }
