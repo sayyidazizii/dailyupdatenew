@@ -1,14 +1,14 @@
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const git = simpleGit();
 
+// Array commit messages yang beragam
 const commitMessages = [
     "📝 Daily activity update",
     "🔄 Regular maintenance commit",
-    "✨ Fresh daily changes",
+    "✨ Fresh daily changes", 
     "🚀 Automated sync update",
     "📊 Progress tracking update",
     "🔧 System maintenance log",
@@ -28,9 +28,10 @@ const commitMessages = [
     "🏆 Achievement tracking"
 ];
 
+// Array variasi content untuk file log
 const activityTypes = [
     "code review session",
-    "feature development",
+    "feature development", 
     "bug fixing",
     "documentation update",
     "performance optimization",
@@ -51,14 +52,11 @@ function getRandomActivity() {
     return activityTypes[Math.floor(Math.random() * activityTypes.length)];
 }
 
-function generateBranchName(activity) {
-    return `auto/${activity.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-}
-
 function shouldCommitNow() {
+    // Baca file tracking untuk cek berapa kali sudah commit hari ini
     const today = new Date().toDateString();
     const trackingFile = path.join(__dirname, 'commit_tracking.json');
-
+    
     let tracking = {};
     if (fs.existsSync(trackingFile)) {
         try {
@@ -67,113 +65,90 @@ function shouldCommitNow() {
             tracking = {};
         }
     }
-
+    
+    // Reset counter jika hari berbeda
     if (tracking.date !== today) {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 8) + 8 // 8–15
+            targetCommits: Math.floor(Math.random() * 8) + 8 // Random 8-15
         };
-
+        
+        // Log new day
         const filePath = path.join(__dirname, 'daily_update.txt');
-        const timestamp = new Date().toLocaleString('en-US', {
+        const timestamp = new Date().toLocaleString('en-US', { 
             timeZone: 'Asia/Jakarta',
             year: 'numeric',
-            month: 'short',
+            month: 'short', 
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
-
+    
+    // Commit jika belum mencapai target dan dengan probabilitas
     const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-
+    
     if (shouldCommit) {
         tracking.count += 1;
     }
-
+    
+    // Simpan tracking
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-
+    
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
 }
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
-    const timestamp = new Date().toLocaleString('en-US', {
+    const timestamp = new Date().toLocaleString('en-US', { 
         timeZone: 'Asia/Jakarta',
         year: 'numeric',
-        month: 'short',
+        month: 'short', 
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: false
     });
-
+    
     const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
     fs.appendFileSync(filePath, logEntry);
     console.log(`${type}: ${message}`);
 }
 
 async function makeCommit() {
+    // Cek apakah harus commit sekarang DULU sebelum menulis log apapun
     if (!shouldCommitNow()) {
         console.log('⏭️  Skipping commit this time - maintaining natural frequency');
-        return;
+        console.log('📊 Daily commit frequency management active');
+        return; // Keluar tanpa menulis log ke file
     }
 
+    // Baru tulis log kalau memang akan commit
     addLog('🤖 Bot execution started', 'SYSTEM');
-
+    
+    // Generate aktivitas dan log
     const activity = getRandomActivity();
-    const branchName = generateBranchName(activity);
-    const commitMessage = getRandomCommitMessage();
-
     addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
-
-    try {
-        // Create new branch
-        await git.checkoutLocalBranch(branchName);
-        addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
-
-        // Write activity to file
-        const filePath = path.join(__dirname, 'daily_update.txt');
-        fs.appendFileSync(filePath, `Activity: ${activity}\n`);
-
-        // Simulate progress logs
-        const progressMessages = [
-            '🔍 Analyzing requirements',
-            '⚡ Implementing solution',
-            '🧪 Running tests',
-            '✅ Task completed successfully'
-        ];
-        const numLogs = Math.floor(Math.random() * 3) + 1;
-        for (let i = 0; i < numLogs; i++) {
-            if (i < progressMessages.length) {
-                addLog(progressMessages[i], 'PROGRESS');
-            }
+    
+    // Simulasi progress dengan beberapa log entries
+    const progressMessages = [
+        '🔍 Analyzing requirements',
+        '⚡ Implementing solution', 
+        '🧪 Running tests',
+        '✅ Task completed successfully'
+    ];
+    
+    // Random progress logs (1-3 entries)
+    const numLogs = Math.floor(Math.random() * 3) + 1;
+    for (let i = 0; i < numLogs; i++) {
+        if (i < progressMessages.length) {
+            addLog(progressMessages[i], 'PROGRESS');
         }
-
-        await git.add(filePath);
-        await git.commit(commitMessage);
-        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
-
-        // Push to GitHub
-        await git.push('origin', branchName);
-        addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
-
-        // Create PR via GitHub CLI
-        const prTitle = `[Auto] ${commitMessage}`;
-        const prBody = `Automated PR for ${activity}`;
-        execSync(`gh pr create --fill --title "${prTitle}" --body "${prBody}" --base main`, { stdio: 'inherit' });
-        addLog('🔀 Pull request created via GitHub CLI', 'PR');
-
-        // Auto-merge & delete branch
-        execSync(`gh pr merge --auto --delete-branch`, { stdio: 'inherit' });
-        addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
-
-    } catch (err) {
-        addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
     }
 
+    // Bot hanya menulis log, biarkan workflow yang handle git operations
     addLog('🏁 Bot execution finished', 'SYSTEM');
     addLog('─'.repeat(60), 'SEPARATOR');
 }
