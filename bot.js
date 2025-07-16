@@ -348,25 +348,30 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // 🔒 Stash dulu untuk hindari overwrite error
+        // ✅ Tambahkan file yang berubah ke staging
+        await git.add('.');
+        addLog('📥 Added changes to staging before stash', 'STAGE');
+
+        // 🔒 Stash semua perubahan (daily_update.txt termasuk)
         await git.stash();
         addLog('📦 Stashed changes before PR merge', 'STASH');
 
-        // Tunggu agar PR ready
+        // Tunggu agar PR siap merge
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        // 🚀 Jalankan auto-merge
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
             addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
 
-            // 🔓 Pop kembali perubahan lokal
+            // 🔓 Pop stash setelah merge
             await git.stash(['pop']);
             addLog('📦 Restored stashed changes after PR merge', 'STASH');
         } else {
             addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
 
-            // Pop stash dulu sebelum lanjut manual
+            // Tetap pop stash meski gagal
             await git.stash(['pop']);
             addLog('📦 Restored stashed changes after failed auto-merge', 'STASH');
 
@@ -378,6 +383,7 @@ async function attemptAutoMerge(prNum, branchName) {
         await cleanupBranch(branchName);
     }
 }
+
 
 
 
