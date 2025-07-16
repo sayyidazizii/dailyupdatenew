@@ -115,6 +115,23 @@ function addLog(message, type = 'INFO') {
     console.log(`${type}: ${message}`);
 }
 
+function execSafeSync(command, options = {}) {
+    try {
+        const result = execSync(command, { 
+            encoding: 'utf8', 
+            stdio: 'pipe',
+            ...options 
+        });
+        return { success: true, output: result.trim() };
+    } catch (error) {
+        return { 
+            success: false, 
+            error: error.message, 
+            output: error.stdout ? error.stdout.trim() : ''
+        };
+    }
+}
+
 async function makeCommit() {
     if (!shouldCommitNow()) {
         console.log('⏭️  Skipping commit this time - maintaining natural frequency');
@@ -130,6 +147,25 @@ async function makeCommit() {
     addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
     try {
+        // Ensure we're on main/master branch first
+        const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+        addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
+
+        // Switch to main branch if not already there
+        if (currentBranch !== 'main' && currentBranch !== 'master') {
+            try {
+                await git.checkout('main');
+                addLog('🔄 Switched to main branch', 'BRANCH');
+            } catch (err) {
+                await git.checkout('master');
+                addLog('🔄 Switched to master branch', 'BRANCH');
+            }
+        }
+
+        // Pull latest changes
+        await git.pull();
+        addLog('⬇️ Pulled latest changes', 'SYNC');
+
         // Create new branch
         await git.checkoutLocalBranch(branchName);
         addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
@@ -152,6 +188,7 @@ async function makeCommit() {
             }
         }
 
+        // Stage and commit changes
         await git.add(filePath);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
@@ -163,19 +200,65 @@ async function makeCommit() {
         // Create PR via GitHub CLI
         const prTitle = `[Auto] ${commitMessage}`;
         const prBody = `Automated PR for ${activity}`;
-        execSync(`gh pr create --fill --title "${prTitle}" --body "${prBody}" --base main`, { stdio: 'inherit' });
-        addLog('🔀 Pull request created via GitHub CLI', 'PR');
-
-        // Auto-merge & delete branch
-        execSync(`gh pr merge --auto --delete-branch`, { stdio: 'inherit' });
-        addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
+        
+        const prResult = execSafeSync(`gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName}`);
+        
+        if (prResult.success) {
+            addLog('🔀 Pull request created via GitHub CLI', 'PR');
+            
+            // Extract PR number from output
+            const prNumber = prResult.output.match(/(\d+)$/);
+            if (prNumber) {
+                const prNum = prNumber[1];
+                addLog(`📋 PR #${prNum} created successfully`, 'PR');
+                
+                // Auto-merge PR
+                const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
+                
+                if (mergeResult.success) {
+                    addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
+                } else {
+                    addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
+                    // Try manual merge approach
+                    try {
+                        await git.checkout('main');
+                        await git.merge([branchName]);
+                        await git.push();
+                        await git.deleteLocalBranch(branchName);
+                        addLog('🔄 Manual merge completed', 'CLEANUP');
+                    } catch (manualMergeErr) {
+                        addLog(`❌ Manual merge also failed: ${manualMergeErr.message}`, 'ERROR');
+                    }
+                }
+            }
+        } else {
+            addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
+        }
 
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
+        
+        // Clean up on error
+        try {
+            const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+            if (currentBranch !== 'main' && currentBranch !== 'master') {
+                await git.checkout('main');
+                await git.deleteLocalBranch(branchName);
+                addLog('🧹 Cleaned up failed branch', 'CLEANUP');
+            }
+        } catch (cleanupErr) {
+            addLog(`⚠️ Cleanup failed: ${cleanupErr.message}`, 'WARNING');
+        }
     }
 
     addLog('🏁 Bot execution finished', 'SYSTEM');
     addLog('─'.repeat(60), 'SEPARATOR');
+}
+
+// Check if required environment variables are set
+if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
+    console.error('❌ Error: GITHUB_TOKEN or GH_TOKEN environment variable not set');
+    process.exit(1);
 }
 
 makeCommit();
