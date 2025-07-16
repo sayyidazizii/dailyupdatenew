@@ -340,7 +340,6 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Cek apakah ada perubahan lokal yang belum dikomit
         const status = await git.status();
         if (!status.isClean()) {
             await git.add('.');
@@ -348,10 +347,16 @@ async function attemptAutoMerge(prNum, branchName) {
             addLog('📦 Auto-committed changes before merge attempt', 'COMMIT');
         }
 
+        // Cek ulang apakah sudah bersih
+        const postCommitStatus = await git.status();
+        if (!postCommitStatus.isClean()) {
+            addLog('🚫 Cannot proceed with merge: local changes still exist after commit', 'ERROR');
+            return;
+        }
+
         // Tunggu sejenak agar PR siap
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Jalankan merge otomatis
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
@@ -365,6 +370,7 @@ async function attemptAutoMerge(prNum, branchName) {
         await cleanupBranch(branchName);
     }
 }
+
 
 
 async function attemptManualMerge(branchName) {
