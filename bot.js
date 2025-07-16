@@ -250,22 +250,22 @@ async function makeCommit() {
             return;
         }
 
-        addLog('🤖 Bot execution started', 'SYSTEM');
+        //addLog('🤖 Bot execution started', 'SYSTEM');
 
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
         const commitMessage = getRandomCommitMessage();
 
-        addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
+        //addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
         // In GitHub Actions, we're already on main branch
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-        addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
+        //addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
 
         // Ensure we're on main (should already be in GitHub Actions)
         if (currentBranch !== 'main') {
             await git.checkout('main');
-            addLog('🔄 Switched to main branch', 'BRANCH');
+            //addLog('🔄 Switched to main branch', 'BRANCH');
         }
 
         // Sync with remote before any operations
@@ -275,7 +275,7 @@ async function makeCommit() {
 
         // Create new branch from clean main
         await git.checkoutLocalBranch(branchName);
-        addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
+       // addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
         // Make changes
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -290,20 +290,20 @@ async function makeCommit() {
         const numLogs = Math.floor(Math.random() * 3) + 1;
         for (let i = 0; i < numLogs; i++) {
             if (i < progressMessages.length) {
-                addLog(progressMessages[i], 'PROGRESS');
+                //addLog(progressMessages[i], 'PROGRESS');
             }
         }
 
         // Commit and push
         await git.add(filePath);
         await git.commit(commitMessage);
-        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        //addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
         // Catat hanya jika sukses
         incrementTrackingCount();
         
         await git.push('origin', branchName);
-        addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
+        //addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
 
         // Create PR
         const prTitle = `[Auto] ${commitMessage}`;
