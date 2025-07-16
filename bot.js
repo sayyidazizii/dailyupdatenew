@@ -1,3 +1,4 @@
+// Smart Commit Bot (Fixed Version)
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const path = require('path');
@@ -6,19 +7,41 @@ const { execSync } = require('child_process');
 const git = simpleGit();
 
 const commitMessages = [
-    "📝 Daily activity update", "🔄 Regular maintenance commit", "✨ Fresh daily changes",
-    "🚀 Automated sync update", "📊 Progress tracking update", "🔧 System maintenance log",
-    "💫 Daily workflow commit", "⚡ Quick status update", "🌟 Regular check-in",
-    "🎯 Daily milestone update", "🔥 Continuous improvement", "💡 Daily insights update",
-    "🚧 Work in progress sync", "📈 Performance tracking", "🎨 Daily refinements",
-    "🛠️ Routine optimization", "💪 Daily grind update", "🌈 Creative progress sync",
-    "⭐ Excellence pursuit update", "🏆 Achievement tracking"
+    "📝 Daily activity update",
+    "🔄 Regular maintenance commit",
+    "✨ Fresh daily changes",
+    "🚀 Automated sync update",
+    "📊 Progress tracking update",
+    "🔧 System maintenance log",
+    "💫 Daily workflow commit",
+    "⚡ Quick status update",
+    "🌟 Regular check-in",
+    "🎯 Daily milestone update",
+    "🔥 Continuous improvement",
+    "💡 Daily insights update",
+    "🚧 Work in progress sync",
+    "📈 Performance tracking",
+    "🎨 Daily refinements",
+    "🛠️ Routine optimization",
+    "💪 Daily grind update",
+    "🌈 Creative progress sync",
+    "⭐ Excellence pursuit update",
+    "🏆 Achievement tracking"
 ];
 
 const activityTypes = [
-    "code review session", "feature development", "bug fixing", "documentation update",
-    "performance optimization", "testing improvements", "refactoring work", "security enhancements",
-    "UI/UX improvements", "database optimization", "API development", "deployment preparation"
+    "code review session",
+    "feature development",
+    "bug fixing",
+    "documentation update",
+    "performance optimization",
+    "testing improvements",
+    "refactoring work",
+    "security enhancements",
+    "UI/UX improvements",
+    "database optimization",
+    "API development",
+    "deployment preparation"
 ];
 
 function getRandomCommitMessage() {
@@ -70,6 +93,7 @@ function shouldCommitNow() {
     }
 
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
 }
@@ -131,7 +155,7 @@ async function makeCommit() {
             try {
                 await git.checkout('main');
                 addLog('🔄 Switched to main branch', 'BRANCH');
-            } catch {
+            } catch (err) {
                 await git.checkout('master');
                 addLog('🔄 Switched to master branch', 'BRANCH');
             }
@@ -154,7 +178,9 @@ async function makeCommit() {
         ];
         const numLogs = Math.floor(Math.random() * 3) + 1;
         for (let i = 0; i < numLogs; i++) {
-            addLog(progressMessages[i], 'PROGRESS');
+            if (i < progressMessages.length) {
+                addLog(progressMessages[i], 'PROGRESS');
+            }
         }
 
         await git.add(filePath);
@@ -164,34 +190,35 @@ async function makeCommit() {
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
 
-        // PR create
         const prTitle = `[Auto] ${commitMessage}`;
         const prBody = `Automated PR for ${activity}`;
+
         const prResult = execSafeSync(`gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName}`);
 
         if (prResult.success) {
             addLog('🔀 Pull request created via GitHub CLI', 'PR');
 
-            // Extract PR number
-            const match = prResult.output.match(/\/pull\/(\d+)/);
-            const prNum = match ? match[1] : null;
-
-            if (prNum) {
-                addLog(`📋 PR #${prNum} created successfully: ${prResult.output}`, 'PR');
+            const prNumberMatch = prResult.output.match(/(\d+)$/);
+            if (prNumberMatch) {
+                const prNum = prNumberMatch[1];
+                addLog(`📋 PR #${prNum} created successfully`, 'PR');
 
                 const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
+
                 if (mergeResult.success) {
                     addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
                 } else {
                     addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
                     try {
+                        await git.stash();
                         await git.checkout('main');
                         await git.merge([branchName]);
                         await git.push();
                         await git.deleteLocalBranch(branchName);
-                        addLog('🔄 Manual merge completed', 'CLEANUP');
-                    } catch (manualErr) {
-                        addLog(`❌ Manual merge also failed: ${manualErr.message}`, 'ERROR');
+                        await git.stash(['pop']);
+                        addLog('🔄 Manual merge completed after stashing', 'CLEANUP');
+                    } catch (manualMergeErr) {
+                        addLog(`❌ Manual merge also failed: ${manualMergeErr.message}`, 'ERROR');
                     }
                 }
             }
