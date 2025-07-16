@@ -244,6 +244,10 @@ async function makeCommit() {
         return;
     }
 
+        const activity = getRandomActivity();
+        const branchName = generateBranchName(activity);
+        const commitMessage = getRandomCommitMessage();
+
     try {
         if (!shouldCommitNow()) {
             console.log('⏭️  Skipping commit this time - maintaining natural frequency');
@@ -251,10 +255,6 @@ async function makeCommit() {
         }
 
         //addLog('🤖 Bot execution started', 'SYSTEM');
-
-        const activity = getRandomActivity();
-        const branchName = generateBranchName(activity);
-        const commitMessage = getRandomCommitMessage();
 
         //addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
@@ -325,7 +325,6 @@ async function makeCommit() {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
             await cleanupBranch(branchName);
         }
-    addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
@@ -333,6 +332,7 @@ async function makeCommit() {
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
+        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
