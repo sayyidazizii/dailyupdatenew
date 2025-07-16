@@ -50,12 +50,12 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Install GitHub CLI
+    - name: Checking dependencies version
       run: |
-        sudo apt-get update
-        sudo apt-get install wget curl -y
-        wget https://github.com/cli/cli/releases/download/v2.75.1/gh_2.75.1_linux_amd64.deb
-        dpkg -i gh_2.75.1_linux_amd64.deb
+        gh --version
+        git --version
+        node --version
+        docker --version
 
     - name: Setup Git config
       run: |
