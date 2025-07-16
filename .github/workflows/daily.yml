@@ -1,7 +1,8 @@
 name: Smart Daily Commits (8–15/day)
+
 on:
   schedule:
-    # Setiap jam antara 06:00–23:00 WIB (UTC+7)
+    # Eksekusi antara jam 06:00–23:00 WIB (UTC+7)
     - cron: '0 23 * * *'    # 06:00 WIB
     - cron: '30 0 * * *'    # 07:30 WIB
     - cron: '15 1 * * *'    # 08:15 WIB
@@ -40,46 +41,34 @@ jobs:
       pull-requests: write
       issues: write
       actions: read
+
     steps:
-    - name: Checkout repository
+    - name: ⬇️ Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Setup Node.js
+
+    - name: 🟢 Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-    
-    - name: Install dependencies
+
+    - name: 📦 Install dependencies
       run: npm install
-    
-    - name: Checking dependencies version
-      run: |
-        gh --version
-        git --version
-        node --version
-        docker --version
-    
-    - name: Setup Git config
+
+    - name: 🛠 Setup Git config
       run: |
         git config --global user.name "iam-rizz"
         git config --global user.email "rizky@mct.co.id"
-    
-    - name: Authenticate GitHub CLI
+
+    - name: 🔑 Authenticate GitHub CLI
       run: |
-        # Alternative login method using heredoc
-        gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
         gh auth setup-git
         gh auth status
-        echo "✅ GitHub CLI authenticated successfully"
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Run smart bot with auto PR
-      run: |
-        echo "🚀 Starting smart commit bot"
-        node bot.js
+
+    - name: 🚀 Run Smart Commit Bot
+      run: node bot.js
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
