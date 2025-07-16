@@ -369,12 +369,12 @@ async function attemptAutoMerge(prNum, branchName) {
 
 async function attemptManualMerge(branchName) {
     const activity = getRandomActivity();
-    const status = await git.status();
-    if (!status.isClean()) {
-        await git.add('.');
-        await git.commit('📦 Auto-commit before switching to main');
-        addLog('📦 Auto-committed before switching to main', 'COMMIT');
-    }
+    // const status = await git.status();
+    // if (!status.isClean()) {
+    //     await git.add('.');
+    //     await git.commit('📦 Auto-commit before switching to main');
+    //     addLog('📦 Auto-committed before switching to main', 'COMMIT');
+    // }
     try {
         // Get current branch first
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
@@ -390,6 +390,7 @@ async function attemptManualMerge(branchName) {
                     await git.commit('Temporary commit for manual merge');
                     addLog('📦 Committed pending changes', 'COMMIT');
                 }
+                 await git.push();
             } catch (commitErr) {
                 addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
             }
@@ -411,7 +412,7 @@ async function attemptManualMerge(branchName) {
             try {
                 await git.push('origin', 'main');
                 pushSuccess = true;
-                addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+                // addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
                 addLog('� Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
