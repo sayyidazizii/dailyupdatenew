@@ -333,6 +333,7 @@ async function makeCommit() {
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
+        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
