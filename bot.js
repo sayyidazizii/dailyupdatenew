@@ -244,17 +244,17 @@ async function makeCommit() {
         return;
     }
 
-    try {
-        if (!shouldCommitNow()) {
-            console.log('⏭️  Skipping commit this time - maintaining natural frequency');
-            return;
-        }
-
-        //addLog('🤖 Bot execution started', 'SYSTEM');
-
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
         const commitMessage = getRandomCommitMessage();
+
+    try {
+        // if (!shouldCommitNow()) {
+        //     console.log('⏭️  Skipping commit this time - maintaining natural frequency');
+        //     return;
+        // }
+
+        //addLog('🤖 Bot execution started', 'SYSTEM');
 
         //addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
@@ -271,6 +271,14 @@ async function makeCommit() {
         // Sync with remote before any operations
         if (!(await syncWithRemote())) {
             return;
+        }
+
+        // Ensure pending changes won't conflict
+        const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('📦 Auto-save before creating new branch');
+            addLog('📦 Auto-committed pending changes before branch creation', 'COMMIT');
         }
 
         // Create new branch from clean main
@@ -325,7 +333,6 @@ async function makeCommit() {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
             await cleanupBranch(branchName);
         }
-    addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
@@ -333,6 +340,7 @@ async function makeCommit() {
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
+        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
@@ -340,6 +348,7 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
+        // Cek apakah ada perubahan lokal yang belum dikomit
         const status = await git.status();
         if (!status.isClean()) {
             await git.add('.');
@@ -347,16 +356,10 @@ async function attemptAutoMerge(prNum, branchName) {
             addLog('📦 Auto-committed changes before merge attempt', 'COMMIT');
         }
 
-        // Cek ulang apakah sudah bersih
-        const postCommitStatus = await git.status();
-        if (!postCommitStatus.isClean()) {
-            addLog('🚫 Cannot proceed with merge: local changes still exist after commit', 'ERROR');
-            return;
-        }
-
         // Tunggu sejenak agar PR siap
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        // Jalankan merge otomatis
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
@@ -370,7 +373,6 @@ async function attemptAutoMerge(prNum, branchName) {
         await cleanupBranch(branchName);
     }
 }
-
 
 
 async function attemptManualMerge(branchName) {
