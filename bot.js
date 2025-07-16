@@ -187,18 +187,22 @@ async function safeStashAndCheckout(targetBranch) {
                 await git.add('.');
                 await git.commit('📦 Auto-save before switching branch');
                 addLog('📦 Committed pending changes before switching branch', 'COMMIT');
+
+                // Tambahan: stash setelah commit juga
+                await git.stash();
+                addLog('📦 Stashed changes after auto-commit', 'STASH');
             }
         }
 
         await git.checkout(targetBranch);
         addLog(`🔄 Switched to branch: ${targetBranch}`, 'BRANCH');
         return true;
-
     } catch (error) {
         addLog(`❌ Failed to switch to ${targetBranch}: ${error.message}`, 'ERROR');
         return false;
     }
 }
+
 
 
 async function safeStashPop() {
