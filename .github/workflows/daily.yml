@@ -52,10 +52,10 @@ jobs:
 
     - name: Install GitHub CLI
       run: |
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
-        sudo apt-add-repository https://cli.github.com/packages
         sudo apt-get update
-        sudo apt-get install gh -y
+        sudo apt-get install wget curl -y
+        wget https://github.com/cli/cli/releases/download/v2.75.1/gh_2.75.1_linux_amd64.deb
+        dpkg -i gh_2.75.1_linux_amd64.deb
 
     - name: Setup Git config
       run: |
