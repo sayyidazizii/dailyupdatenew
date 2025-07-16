@@ -348,12 +348,12 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Cek apakah ada perubahan lokal yang belum dikomit
+        // Pastikan tidak ada perubahan lokal sebelum merge PR
         const status = await git.status();
         if (!status.isClean()) {
             await git.add('.');
-            await git.commit('📦 Auto-save before merge');
-            addLog('📦 Auto-committed changes before merge attempt', 'COMMIT');
+            await git.commit('📦 Auto-commit before PR merge to avoid overwrite');
+            addLog('📦 Auto-committed to avoid overwrite before gh merge', 'COMMIT');
         }
 
         // Tunggu sejenak agar PR siap
