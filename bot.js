@@ -376,6 +376,12 @@ async function attemptAutoMerge(prNum, branchName) {
 
 
 async function attemptManualMerge(branchName) {
+    const status = await git.status();
+    if (!status.isClean()) {
+        await git.add('.');
+        await git.commit('📦 Auto-commit before switching to main');
+        addLog('📦 Auto-committed before switching to main', 'COMMIT');
+    }
     try {
         // Get current branch first
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
@@ -437,6 +443,13 @@ async function attemptManualMerge(branchName) {
 }
 
 async function cleanupBranch(branchName) {
+    const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('📦 Auto-commit before switching to main');
+            addLog('📦 Auto-committed before switching to main', 'COMMIT');
+        }
+
     try {
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
         if (currentBranch !== 'main') {
