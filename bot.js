@@ -273,6 +273,14 @@ async function makeCommit() {
             return;
         }
 
+        // Ensure pending changes won't conflict
+        const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('📦 Auto-save before creating new branch');
+            addLog('📦 Auto-committed pending changes before branch creation', 'COMMIT');
+        }
+
         // Create new branch from clean main
         await git.checkoutLocalBranch(branchName);
        // addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
