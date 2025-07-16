@@ -45,17 +45,17 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
 
     - name: Install dependencies
       run: npm install
 
-    - name: Install GitHub CLI
+    - name: Checking dependencies version
       run: |
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
-        sudo apt-add-repository https://cli.github.com/packages
-        sudo apt-get update
-        sudo apt-get install gh -y
+        gh --version
+        git --version
+        node --version
+        docker --version
 
     - name: Setup Git config
       run: |
