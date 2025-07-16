@@ -340,7 +340,7 @@ async function makeCommit() {
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
-        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        // addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
@@ -376,6 +376,7 @@ async function attemptAutoMerge(prNum, branchName) {
 
 
 async function attemptManualMerge(branchName) {
+    const activity = getRandomActivity();
     const status = await git.status();
     if (!status.isClean()) {
         await git.add('.');
@@ -418,6 +419,7 @@ async function attemptManualMerge(branchName) {
             try {
                 await git.push('origin', 'main');
                 pushSuccess = true;
+                addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
                 addLog('� Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
