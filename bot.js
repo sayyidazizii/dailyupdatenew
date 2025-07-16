@@ -322,9 +322,18 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Wait a bit for PR to be ready
+        // Cek apakah ada perubahan lokal yang belum dikomit
+        const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('📦 Auto-save before merge');
+            addLog('📦 Auto-committed changes before merge attempt', 'COMMIT');
+        }
+
+        // Tunggu sejenak agar PR siap
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
+        // Jalankan merge otomatis
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
@@ -338,6 +347,7 @@ async function attemptAutoMerge(prNum, branchName) {
         await cleanupBranch(branchName);
     }
 }
+
 
 async function attemptManualMerge(branchName) {
     try {
