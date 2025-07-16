@@ -249,10 +249,10 @@ async function makeCommit() {
         const commitMessage = getRandomCommitMessage();
 
     try {
-        if (!shouldCommitNow()) {
-            console.log('⏭️  Skipping commit this time - maintaining natural frequency');
-            return;
-        }
+        // if (!shouldCommitNow()) {
+        //     console.log('⏭️  Skipping commit this time - maintaining natural frequency');
+        //     return;
+        // }
 
         //addLog('🤖 Bot execution started', 'SYSTEM');
 
