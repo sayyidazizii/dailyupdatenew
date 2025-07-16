@@ -98,7 +98,7 @@ function shouldCommitNow() {
     if (fs.existsSync(trackingFile)) {
         try {
             tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
-        } catch (error) {
+        } catch {
             tracking = {};
         }
     }
@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 8) + 8 // 8–15
+            targetCommits: Math.floor(Math.random() * 8) + 8
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -118,19 +118,30 @@ function shouldCommitNow() {
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     }
 
-    const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-
-    if (shouldCommit) {
-        tracking.count += 1;
-    }
-
-    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-
-    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return shouldCommit;
+    return tracking.count < tracking.targetCommits && Math.random() > 0.3;
 }
+
+function incrementTrackingCount() {
+    const trackingFile = path.join(__dirname, 'commit_tracking.json');
+
+    let tracking = {};
+    if (fs.existsSync(trackingFile)) {
+        try {
+            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+        } catch {
+            tracking = {};
+        }
+    }
+
+    if (tracking.date === new Date().toDateString()) {
+        tracking.count = (tracking.count || 0) + 1;
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    }
+}
+
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
@@ -288,6 +299,9 @@ async function makeCommit() {
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
+        // Catat hanya jika sukses
+        incrementTrackingCount();
+        
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
 
