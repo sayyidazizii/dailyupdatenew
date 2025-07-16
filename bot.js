@@ -274,12 +274,12 @@ async function makeCommit() {
         }
 
         // Ensure pending changes won't conflict
-        const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('📦 Auto-save before creating new branch');
-            addLog('📦 Auto-committed pending changes before branch creation', 'COMMIT');
-        }
+        // const status = await git.status();
+        // if (!status.isClean()) {
+        //     await git.add('.');
+        //     await git.commit('📦 Auto-save before creating new branch');
+        //     addLog('📦 Auto-committed pending changes before branch creation', 'COMMIT');
+        // }
 
         // Create new branch from clean main
         await git.checkoutLocalBranch(branchName);
@@ -348,14 +348,6 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Cek apakah ada perubahan lokal yang belum dikomit
-        const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('📦 Auto-save before merge');
-            addLog('📦 Auto-committed changes before merge attempt', 'COMMIT');
-        }
-
         // Tunggu sejenak agar PR siap
         await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -445,13 +437,6 @@ async function attemptManualMerge(branchName) {
 }
 
 async function cleanupBranch(branchName) {
-    const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('📦 Auto-commit before switching to main');
-            addLog('📦 Auto-committed before switching to main', 'COMMIT');
-        }
-
     try {
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
         if (currentBranch !== 'main') {
