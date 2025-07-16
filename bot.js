@@ -348,31 +348,37 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Pastikan tidak ada perubahan lokal sebelum merge PR
-        const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('📦 Auto-commit before PR merge to avoid overwrite');
-            addLog('📦 Auto-committed to avoid overwrite before gh merge', 'COMMIT');
-        }
+        // 🔒 Stash dulu untuk hindari overwrite error
+        await git.stash();
+        addLog('📦 Stashed changes before PR merge', 'STASH');
 
-        // Tunggu sejenak agar PR siap
+        // Tunggu agar PR ready
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Jalankan merge otomatis
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
             addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
+
+            // 🔓 Pop kembali perubahan lokal
+            await git.stash(['pop']);
+            addLog('📦 Restored stashed changes after PR merge', 'STASH');
         } else {
             addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
+
+            // Pop stash dulu sebelum lanjut manual
+            await git.stash(['pop']);
+            addLog('📦 Restored stashed changes after failed auto-merge', 'STASH');
+
             await attemptManualMerge(branchName);
         }
+
     } catch (error) {
         addLog(`❌ Error during merge attempt: ${error.message}`, 'ERROR');
         await cleanupBranch(branchName);
     }
 }
+
 
 
 async function attemptManualMerge(branchName) {
