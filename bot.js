@@ -151,13 +151,15 @@ async function makeCommit() {
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
         addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
 
-        if (currentBranch !== 'main' && currentBranch !== 'master') {
+        if (currentBranch !== 'main') {
             try {
+                await git.stash();
                 await git.checkout('main');
-                addLog('🔄 Switched to main branch', 'BRANCH');
+                await git.stash(['pop']);
+                addLog('🔄 Switched to main branch safely with stash', 'BRANCH');
             } catch (err) {
-                await git.checkout('master');
-                addLog('🔄 Switched to master branch', 'BRANCH');
+                addLog(`❌ Failed to switch to main: ${err.message}`, 'ERROR');
+                return;
             }
         }
 
@@ -229,10 +231,12 @@ async function makeCommit() {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         try {
             const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-            if (currentBranch !== 'main' && currentBranch !== 'master') {
+            if (currentBranch !== 'main') {
+                await git.stash();
                 await git.checkout('main');
                 await git.deleteLocalBranch(branchName);
-                addLog('🧹 Cleaned up failed branch', 'CLEANUP');
+                await git.stash(['pop']);
+                addLog('🧹 Cleaned up failed branch safely', 'CLEANUP');
             }
         } catch (cleanupErr) {
             addLog(`⚠️ Cleanup failed: ${cleanupErr.message}`, 'WARNING');
