@@ -341,21 +341,40 @@ async function attemptAutoMerge(prNum, branchName) {
 
 async function attemptManualMerge(branchName) {
     try {
-        // Switch to main with proper stashing
-        await safeStashAndCheckout('main');
+        // Get current branch first
+        const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+        addLog(`📍 Currently on branch: ${currentBranch}`, 'BRANCH');
         
-        // Sync with remote again
+        // If we're not on main, switch to main first
+        if (currentBranch !== 'main') {
+            // Commit any uncommitted changes on current branch first
+            try {
+                const status = await git.status();
+                if (!status.isClean()) {
+                    await git.add('.');
+                    await git.commit('Temporary commit for manual merge');
+                    addLog('📦 Committed pending changes', 'COMMIT');
+                }
+            } catch (commitErr) {
+                addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
+            }
+            
+            await git.checkout('main');
+            addLog('🔄 Switched to main branch', 'BRANCH');
+        }
+        
+        // Sync with remote
         await syncWithRemote();
         
         // Merge the branch
         await git.merge([branchName]);
         addLog('🔄 Manual merge completed', 'CLEANUP');
         
-        // Push with retry
+        // Push to main (we're already on main)
         let pushSuccess = false;
         for (let i = 0; i < 3; i++) {
             try {
-                await git.push();
+                await git.push('origin', 'main');
                 pushSuccess = true;
                 addLog('� Changes pushed successfully', 'PUSH');
                 break;
