@@ -98,7 +98,7 @@ function shouldCommitNow() {
     if (fs.existsSync(trackingFile)) {
         try {
             tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
-        } catch {
+        } catch (error) {
             tracking = {};
         }
     }
@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 8) + 8
+            targetCommits: Math.floor(Math.random() * 8) + 8 // 8–15
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -118,30 +118,28 @@ function shouldCommitNow() {
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
-        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     }
 
-    return tracking.count < tracking.targetCommits && Math.random() > 0.3;
+    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
+    const shouldCommit = tracking.count < tracking.targetCommits && true;
+
+    if (shouldCommit) {
+        tracking.count += 1;
+    }
+
+    console.log('📍 trackingFile:', trackingFile);
+    console.log('📝 tracking sebelum ditulis:', tracking);
+    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    console.log('✅ tracking setelah ditulis!');
+    
+    execSafeSync(`git add commit_tracking.json`);
+    execSafeSync(`git commit -m "📊 Update tracking progress"`);
+    execSafeSync(`git push`);
+
+
+    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
+    return shouldCommit;
 }
-
-function incrementTrackingCount() {
-    const trackingFile = path.join(__dirname, 'commit_tracking.json');
-
-    let tracking = {};
-    if (fs.existsSync(trackingFile)) {
-        try {
-            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
-        } catch {
-            tracking = {};
-        }
-    }
-
-    if (tracking.date === new Date().toDateString()) {
-        tracking.count = (tracking.count || 0) + 1;
-        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    }
-}
-
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
@@ -192,17 +190,11 @@ async function syncWithRemote() {
 
 async function safeStashAndCheckout(targetBranch) {
     try {
-        if (!process.env.GITHUB_ACTIONS) {
-            const status = await git.status();
-            if (!status.isClean()) {
-                await git.add('.');
-                await git.commit('📦 Auto-save before switching branch');
-                addLog('📦 Committed pending changes before switching branch', 'COMMIT');
-
-                // Tambahan: stash setelah commit juga
-                await git.stash();
-                addLog('📦 Stashed changes after auto-commit', 'STASH');
-            }
+        const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('Temporary commit before switching branch');
+            addLog('📦 Committed changes before switching branch', 'COMMIT');
         }
 
         await git.checkout(targetBranch);
@@ -213,7 +205,6 @@ async function safeStashAndCheckout(targetBranch) {
         return false;
     }
 }
-
 
 
 async function safeStashPop() {
@@ -244,28 +235,31 @@ async function makeCommit() {
         return;
     }
 
+    try {
+        if (!shouldCommitNow()) {
+            console.log('⏭️  Skipping commit this time - maintaining natural frequency');
+            return;
+        }
+
+        addLog('🤖 Bot execution started', 'SYSTEM');
+
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
         const commitMessage = getRandomCommitMessage();
 
-    try {
-        // if (!shouldCommitNow()) {
-        //     console.log('⏭️  Skipping commit this time - maintaining natural frequency');
-        //     return;
-        // }
-
-        //addLog('🤖 Bot execution started', 'SYSTEM');
-
-        //addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
+        addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
         // In GitHub Actions, we're already on main branch
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-        //addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
+        addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
 
         // Ensure we're on main (should already be in GitHub Actions)
         if (currentBranch !== 'main') {
+            await git.add('.');
+            await git.commit('Temporary commit for manual merge');
+            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
-            //addLog('🔄 Switched to main branch', 'BRANCH');
+            addLog('🔄 Switched to main branch', 'BRANCH');
         }
 
         // Sync with remote before any operations
@@ -273,17 +267,9 @@ async function makeCommit() {
             return;
         }
 
-        // Ensure pending changes won't conflict
-        // const status = await git.status();
-        // if (!status.isClean()) {
-        //     await git.add('.');
-        //     await git.commit('📦 Auto-save before creating new branch');
-        //     addLog('📦 Auto-committed pending changes before branch creation', 'COMMIT');
-        // }
-
         // Create new branch from clean main
         await git.checkoutLocalBranch(branchName);
-       // addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
+        addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
         // Make changes
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -298,20 +284,17 @@ async function makeCommit() {
         const numLogs = Math.floor(Math.random() * 3) + 1;
         for (let i = 0; i < numLogs; i++) {
             if (i < progressMessages.length) {
-                //addLog(progressMessages[i], 'PROGRESS');
+                addLog(progressMessages[i], 'PROGRESS');
             }
         }
 
         // Commit and push
         await git.add(filePath);
         await git.commit(commitMessage);
-        //addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
-        // Catat hanya jika sukses
-        incrementTrackingCount();
-        
         await git.push('origin', branchName);
-        //addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
+        addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
 
         // Create PR
         const prTitle = `[Auto] ${commitMessage}`;
@@ -333,6 +316,7 @@ async function makeCommit() {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
             await cleanupBranch(branchName);
         }
+
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
@@ -340,7 +324,6 @@ async function makeCommit() {
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
-        // addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
@@ -348,10 +331,17 @@ async function makeCommit() {
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
-        // Tunggu sejenak agar PR siap
+        // Wait a bit for PR to be ready
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Jalankan merge otomatis
+        // Commit any uncommitted changes BEFORE gh pr merge
+        const status = await git.status();
+        if (!status.isClean()) {
+            await git.add('.');
+            await git.commit('Temp commit before auto-merge');
+            addLog('📦 Committed local changes before attempting auto-merge', 'COMMIT');
+        }
+
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
@@ -368,13 +358,6 @@ async function attemptAutoMerge(prNum, branchName) {
 
 
 async function attemptManualMerge(branchName) {
-    const activity = getRandomActivity();
-    const status = await git.status();
-    if (!status.isClean()) {
-        await git.add('.');
-        await git.commit('📦 Auto-commit before switching to main');
-        addLog('📦 Auto-committed before switching to main', 'COMMIT');
-    }
     try {
         // Get current branch first
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
@@ -393,7 +376,10 @@ async function attemptManualMerge(branchName) {
             } catch (commitErr) {
                 addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
             }
-            
+
+            await git.add('.');
+            await git.commit('Temporary commit for manual merge');
+            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
@@ -411,7 +397,6 @@ async function attemptManualMerge(branchName) {
             try {
                 await git.push('origin', 'main');
                 pushSuccess = true;
-                addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
                 addLog('� Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
@@ -440,9 +425,19 @@ async function cleanupBranch(branchName) {
     try {
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
         if (currentBranch !== 'main') {
-            await safeStashAndCheckout('main');
+            const status = await git.status();
+            if (!status.isClean()) {
+                await git.add('.');
+                await git.commit('Temp commit during cleanup');
+                addLog('📦 Cleanup commit saved pending changes', 'COMMIT');
+            }
+            await git.add('.');
+            await git.commit('Temporary commit for manual merge');
+            addLog('📦 Committed pending changes', 'COMMIT');
+            await git.checkout('main');
+            addLog('🔄 Switched to main branch', 'BRANCH');
         }
-        
+
         // Delete local branch if exists
         try {
             await git.deleteLocalBranch(branchName);
@@ -450,9 +445,9 @@ async function cleanupBranch(branchName) {
         } catch (deleteErr) {
             // Branch might not exist, ignore
         }
-        
+
         await safeStashPop();
-        
+
     } catch (cleanupErr) {
         addLog(`⚠️ Cleanup failed: ${cleanupErr.message}`, 'WARNING');
     }
