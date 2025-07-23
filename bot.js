@@ -118,27 +118,28 @@ function shouldCommitNow() {
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     }
 
-    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-    const shouldCommit = tracking.count < tracking.targetCommits && true;
+    return tracking.count < tracking.targetCommits && Math.random() > 0.3;
+}
 
-    if (shouldCommit) {
-        tracking.count += 1;
+function incrementTrackingCount() {
+    const trackingFile = path.join(__dirname, 'commit_tracking.json');
+
+    let tracking = {};
+    if (fs.existsSync(trackingFile)) {
+        try {
+            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+        } catch {
+            tracking = {};
+        }
     }
 
-    console.log('📍 trackingFile:', trackingFile);
-    console.log('📝 tracking sebelum ditulis:', tracking);
-    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    console.log('✅ tracking setelah ditulis!');
-    
-    execSafeSync(`git add commit_tracking.json`);
-    execSafeSync(`git commit -m "📊 Update tracking progress"`);
-    execSafeSync(`git push`);
-
-
-    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return shouldCommit;
+    if (tracking.date === new Date().toDateString()) {
+        tracking.count = (tracking.count || 0) + 1;
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    }
 }
 
 function addLog(message, type = 'INFO') {
@@ -190,11 +191,17 @@ async function syncWithRemote() {
 
 async function safeStashAndCheckout(targetBranch) {
     try {
-        const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('Temporary commit before switching branch');
-            addLog('📦 Committed changes before switching branch', 'COMMIT');
+        if (!process.env.GITHUB_ACTIONS) {
+            const status = await git.status();
+            if (!status.isClean()) {
+                await git.add('.');
+                await git.commit('📦 Auto-save before switching branch');
+                addLog('📦 Committed pending changes before switching branch', 'COMMIT');
+
+                // Tambahan: stash setelah commit juga
+                await git.stash();
+                addLog('📦 Stashed changes after auto-commit', 'STASH');
+            }
         }
 
         await git.checkout(targetBranch);
@@ -205,6 +212,7 @@ async function safeStashAndCheckout(targetBranch) {
         return false;
     }
 }
+
 
 
 async function safeStashPop() {
@@ -334,14 +342,7 @@ async function attemptAutoMerge(prNum, branchName) {
         // Wait a bit for PR to be ready
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Commit any uncommitted changes BEFORE gh pr merge
-        const status = await git.status();
-        if (!status.isClean()) {
-            await git.add('.');
-            await git.commit('Temp commit before auto-merge');
-            addLog('📦 Committed local changes before attempting auto-merge', 'COMMIT');
-        }
-
+        // Jalankan merge otomatis
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
 
         if (mergeResult.success) {
@@ -355,7 +356,6 @@ async function attemptAutoMerge(prNum, branchName) {
         await cleanupBranch(branchName);
     }
 }
-
 
 async function attemptManualMerge(branchName) {
     try {
