@@ -285,8 +285,9 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push
-        await git.add(filePath);
+        // Commit and push - include commit_tracking.json in PR
+        const trackingFile = path.join(__dirname, 'commit_tracking.json');
+        await git.add([filePath, trackingFile]);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
