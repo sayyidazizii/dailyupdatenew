@@ -132,9 +132,8 @@ function shouldCommitNow() {
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     console.log('✅ tracking setelah ditulis!');
     
-    execSafeSync(`git add commit_tracking.json`);
-    execSafeSync(`git commit -m "📊 Update tracking progress"`);
-    execSafeSync(`git push`);
+    // Remove auto-commit of tracking file to prevent double commits
+    // The tracking file will be committed as part of the main activity commit
 
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
@@ -288,8 +287,8 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push
-        await git.add(filePath);
+        // Commit and push (include tracking file in the main commit)
+        await git.add([filePath, path.join(__dirname, 'commit_tracking.json')]);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
@@ -377,9 +376,6 @@ async function attemptManualMerge(branchName) {
                 addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
             }
 
-            await git.add('.');
-            await git.commit('Temporary commit for manual merge');
-            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
@@ -397,7 +393,7 @@ async function attemptManualMerge(branchName) {
             try {
                 await git.push('origin', 'main');
                 pushSuccess = true;
-                addLog('� Changes pushed successfully', 'PUSH');
+                addLog('🚀 Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
                 addLog(`⚠️ Push attempt ${i + 1} failed: ${pushError.message}`, 'WARNING');
@@ -431,9 +427,6 @@ async function cleanupBranch(branchName) {
                 await git.commit('Temp commit during cleanup');
                 addLog('📦 Cleanup commit saved pending changes', 'COMMIT');
             }
-            await git.add('.');
-            await git.commit('Temporary commit for manual merge');
-            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
