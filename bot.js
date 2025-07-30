@@ -125,6 +125,8 @@ function shouldCommitNow() {
 
     if (shouldCommit) {
         tracking.count += 1;
+        // Tambahkan timestamp untuk memastikan file berubah
+        tracking.lastUpdate = new Date().toISOString();
     }
 
     console.log('📍 trackingFile:', trackingFile);
