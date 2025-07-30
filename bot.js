@@ -287,7 +287,13 @@ async function makeCommit() {
 
         // Commit and push - include commit_tracking.json in PR
         const trackingFile = path.join(__dirname, 'commit_tracking.json');
+        addLog(`📁 Adding files to staging: ${filePath}, ${trackingFile}`, 'STAGING');
         await git.add([filePath, trackingFile]);
+        
+        // Check what's staged
+        const stagedFiles = await git.diff(['--cached', '--name-only']);
+        addLog(`📋 Staged files: ${stagedFiles || 'none'}`, 'STAGING');
+        
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
