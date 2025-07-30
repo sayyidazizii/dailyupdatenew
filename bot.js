@@ -118,39 +118,20 @@ function shouldCommitNow() {
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
-        
-        // Save initial daily reset
-        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     }
 
-    // Check if should commit (don't increment counter yet)
+    // Check if should commit AND increment immediately
     const shouldCommit = tracking.count < tracking.targetCommits;
+
+    if (shouldCommit) {
+        tracking.count += 1;
+    }
+
+    // Save tracking immediately - langsung update tanpa tunggu commit berhasil
+    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
-}
-
-function incrementCommitCount() {
-    const today = new Date().toDateString();
-    const trackingFile = path.join(__dirname, 'commit_tracking.json');
-
-    let tracking = {};
-    if (fs.existsSync(trackingFile)) {
-        try {
-            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
-        } catch (error) {
-            tracking = { date: today, count: 0, targetCommits: 10 };
-        }
-    } else {
-        tracking = { date: today, count: 0, targetCommits: 10 };
-    }
-
-    // Only increment if same day
-    if (tracking.date === today) {
-        tracking.count += 1;
-        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-        console.log(`✅ Updated progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    }
 }
 
 function addLog(message, type = 'INFO') {
@@ -304,9 +285,6 @@ async function makeCommit() {
         await git.add(filePath);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
-        
-        // Update tracking count AFTER successful commit
-        incrementCommitCount();
 
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
@@ -336,25 +314,6 @@ async function makeCommit() {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
     } finally {
-        // Commit tracking file to preserve progress
-        try {
-            const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-            if (currentBranch === 'main') {
-                const trackingFile = path.join(__dirname, 'commit_tracking.json');
-                if (fs.existsSync(trackingFile)) {
-                    await git.add(trackingFile);
-                    const status = await git.status();
-                    if (status.staged.includes('commit_tracking.json')) {
-                        await git.commit('📊 Update daily progress tracking');
-                        await git.push('origin', 'main');
-                        console.log('✅ Tracking file committed successfully');
-                    }
-                }
-            }
-        } catch (trackingErr) {
-            console.log(`⚠️ Failed to commit tracking file: ${trackingErr.message}`);
-        }
-        
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
