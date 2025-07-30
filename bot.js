@@ -118,20 +118,39 @@ function shouldCommitNow() {
             day: '2-digit'
         });
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        
+        // Save initial daily reset
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     }
 
-    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-    const shouldCommit = tracking.count < tracking.targetCommits && true;
-
-    if (shouldCommit) {
-        tracking.count += 1;
-    }
-
-    // Simpan tracking - simple approach from bot_backup.js
-    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    // Check if should commit (don't increment counter yet)
+    const shouldCommit = tracking.count < tracking.targetCommits;
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
+}
+
+function incrementCommitCount() {
+    const today = new Date().toDateString();
+    const trackingFile = path.join(__dirname, 'commit_tracking.json');
+
+    let tracking = {};
+    if (fs.existsSync(trackingFile)) {
+        try {
+            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+        } catch (error) {
+            tracking = { date: today, count: 0, targetCommits: 10 };
+        }
+    } else {
+        tracking = { date: today, count: 0, targetCommits: 10 };
+    }
+
+    // Only increment if same day
+    if (tracking.date === today) {
+        tracking.count += 1;
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+        console.log(`✅ Updated progress: ${tracking.count}/${tracking.targetCommits} commits`);
+    }
 }
 
 function addLog(message, type = 'INFO') {
@@ -281,50 +300,13 @@ async function makeCommit() {
             }
         }
 
-        // Force rewrite tracking file before commit to ensure Git detects changes
-        const trackingFilePath = path.join(__dirname, 'commit_tracking.json');
-        const currentTracking = JSON.parse(fs.readFileSync(trackingFilePath, 'utf8'));
-        fs.writeFileSync(trackingFilePath, JSON.stringify(currentTracking, null, 2));
-        console.log('🔄 Force rewrote tracking file to ensure Git detects changes');
-
-        // Commit and push (include tracking file to ensure it's saved)
-        console.log('🔍 Before commit - checking files:');
-        console.log('  - Activity file exists:', fs.existsSync(filePath));
-        console.log('  - Tracking file exists:', fs.existsSync(trackingFilePath));
-        
-        // Force add tracking file first to ensure it's staged
-        await git.add(trackingFilePath);
-        console.log('📁 Force added tracking file');
-        
-        // Check git status before adding activity file
-        const statusBefore = await git.status();
-        console.log('📊 Git status before add activity:', {
-            modified: statusBefore.modified,
-            not_added: statusBefore.not_added,
-            created: statusBefore.created,
-            staged: statusBefore.staged
-        });
-        
-        // Add activity file
+        // Simple commit process - only commit activity file
         await git.add(filePath);
-        
-        // Check git status after adding both files
-        const statusAfter = await git.status();
-        console.log('📊 Git status after add both:', {
-            staged: statusAfter.staged,
-            modified: statusAfter.modified
-        });
-        
-        // Verify tracking file is in staged
-        if (!statusAfter.staged.includes('commit_tracking.json')) {
-            console.log('⚠️ Tracking file not staged, forcing add again...');
-            await git.add(trackingFilePath);
-            const finalStatus = await git.status();
-            console.log('📊 Final status:', finalStatus.staged);
-        }
-        
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        
+        // Update tracking count AFTER successful commit
+        incrementCommitCount();
 
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
@@ -354,6 +336,25 @@ async function makeCommit() {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
     } finally {
+        // Commit tracking file to preserve progress
+        try {
+            const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
+            if (currentBranch === 'main') {
+                const trackingFile = path.join(__dirname, 'commit_tracking.json');
+                if (fs.existsSync(trackingFile)) {
+                    await git.add(trackingFile);
+                    const status = await git.status();
+                    if (status.staged.includes('commit_tracking.json')) {
+                        await git.commit('📊 Update daily progress tracking');
+                        await git.push('origin', 'main');
+                        console.log('✅ Tracking file committed successfully');
+                    }
+                }
+            }
+        } catch (trackingErr) {
+            console.log(`⚠️ Failed to commit tracking file: ${trackingErr.message}`);
+        }
+        
         if (!process.env.GITHUB_ACTIONS) {
             releaseLock();
         }
