@@ -120,15 +120,19 @@ function shouldCommitNow() {
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
 
-    // Check if should commit AND increment immediately
-    const shouldCommit = tracking.count < tracking.targetCommits;
+    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
+    const shouldCommit = tracking.count < tracking.targetCommits && true;
 
     if (shouldCommit) {
         tracking.count += 1;
     }
 
-    // Save tracking immediately - langsung update tanpa tunggu commit berhasil
+    console.log('📍 trackingFile:', trackingFile);
+    console.log('📝 tracking sebelum ditulis:', tracking);
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    console.log('✅ tracking setelah ditulis!');
+    
+
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
@@ -281,9 +285,8 @@ async function makeCommit() {
             }
         }
 
-        // Simple commit process - commit activity file dan commit_tracking.json
-        const trackingFile = path.join(__dirname, 'commit_tracking.json');
-        await git.add([filePath, trackingFile]);
+        // Commit and push
+        await git.add(filePath);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
@@ -371,6 +374,9 @@ async function attemptManualMerge(branchName) {
                 addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
             }
 
+            await git.add('.');
+            await git.commit('Temporary commit for manual merge');
+            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
@@ -388,7 +394,7 @@ async function attemptManualMerge(branchName) {
             try {
                 await git.push('origin', 'main');
                 pushSuccess = true;
-                addLog('🚀 Changes pushed successfully', 'PUSH');
+                addLog('� Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
                 addLog(`⚠️ Push attempt ${i + 1} failed: ${pushError.message}`, 'WARNING');
@@ -422,6 +428,9 @@ async function cleanupBranch(branchName) {
                 await git.commit('Temp commit during cleanup');
                 addLog('📦 Cleanup commit saved pending changes', 'COMMIT');
             }
+            await git.add('.');
+            await git.commit('Temporary commit for manual merge');
+            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
