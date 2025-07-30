@@ -319,28 +319,47 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push (include tracking file to ensure it's saved)
+        // Force rewrite tracking file before commit to ensure Git detects changes
         const trackingFilePath = path.join(__dirname, 'commit_tracking.json');
+        const currentTracking = JSON.parse(fs.readFileSync(trackingFilePath, 'utf8'));
+        fs.writeFileSync(trackingFilePath, JSON.stringify(currentTracking, null, 2));
+        console.log('🔄 Force rewrote tracking file to ensure Git detects changes');
+
+        // Commit and push (include tracking file to ensure it's saved)
         console.log('🔍 Before commit - checking files:');
         console.log('  - Activity file exists:', fs.existsSync(filePath));
         console.log('  - Tracking file exists:', fs.existsSync(trackingFilePath));
         
-        // Check git status before adding
+        // Force add tracking file first to ensure it's staged
+        await git.add(trackingFilePath);
+        console.log('📁 Force added tracking file');
+        
+        // Check git status before adding activity file
         const statusBefore = await git.status();
-        console.log('📊 Git status before add:', {
+        console.log('📊 Git status before add activity:', {
             modified: statusBefore.modified,
             not_added: statusBefore.not_added,
-            created: statusBefore.created
+            created: statusBefore.created,
+            staged: statusBefore.staged
         });
         
-        await git.add([filePath, trackingFilePath]);
+        // Add activity file
+        await git.add(filePath);
         
-        // Check git status after adding
+        // Check git status after adding both files
         const statusAfter = await git.status();
-        console.log('📊 Git status after add:', {
+        console.log('📊 Git status after add both:', {
             staged: statusAfter.staged,
             modified: statusAfter.modified
         });
+        
+        // Verify tracking file is in staged
+        if (!statusAfter.staged.includes('commit_tracking.json')) {
+            console.log('⚠️ Tracking file not staged, forcing add again...');
+            await git.add(trackingFilePath);
+            const finalStatus = await git.status();
+            console.log('📊 Final status:', finalStatus.staged);
+        }
         
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
