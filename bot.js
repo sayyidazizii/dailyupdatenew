@@ -93,31 +93,14 @@ function generateBranchName(activity) {
 function shouldCommitNow() {
     const today = new Date().toDateString();
     const trackingFile = path.join(__dirname, 'commit_tracking.json');
-    
-    console.log('🔍 Debug info:');
-    console.log('  - Today:', today);
-    console.log('  - __dirname:', __dirname);
-    console.log('  - trackingFile path:', trackingFile);
-    console.log('  - File exists:', fs.existsSync(trackingFile));
 
     let tracking = {};
     if (fs.existsSync(trackingFile)) {
         try {
-            const content = fs.readFileSync(trackingFile, 'utf8');
-            console.log('  - Raw file content:', content);
-            tracking = JSON.parse(content);
-            
-            // Validate tracking object
-            if (!tracking.date || !tracking.hasOwnProperty('count') || !tracking.targetCommits) {
-                throw new Error('Invalid tracking data structure');
-            }
-            console.log('  - Parsed tracking:', tracking);
+            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
         } catch (error) {
-            console.log('⚠️ Tracking file corrupted, reinitializing:', error.message);
             tracking = {};
         }
-    } else {
-        console.log('📁 Tracking file does not exist, will create new one');
     }
 
     if (tracking.date !== today) {
@@ -144,29 +127,8 @@ function shouldCommitNow() {
         tracking.count += 1;
     }
 
-    console.log('📍 trackingFile:', trackingFile);
-    console.log('📝 tracking sebelum ditulis:', tracking);
-    
-    // Enhanced debugging and error handling
-    try {
-        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-        console.log('✅ tracking setelah ditulis!');
-        
-        // Verify the write was successful
-        const verifyContent = fs.readFileSync(trackingFile, 'utf8');
-        const verifyData = JSON.parse(verifyContent);
-        console.log('🔍 Verification - file content:', verifyData);
-        
-        if (verifyData.count !== tracking.count) {
-            console.error('❌ File write verification failed!');
-        }
-    } catch (writeError) {
-        console.error('❌ Failed to write tracking file:', writeError.message);
-        return false; // Don't proceed if we can't track
-    }
-    
-    // Tracking file will be committed together with activity in makeCommit()
-    // This ensures 1:1 ratio between count and actual commits
+    // Simpan tracking - simple approach from bot_backup.js
+    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
     return shouldCommit;
