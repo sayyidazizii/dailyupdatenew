@@ -281,8 +281,9 @@ async function makeCommit() {
             }
         }
 
-        // Simple commit process - only commit activity file
-        await git.add(filePath);
+        // Simple commit process - commit activity file dan commit_tracking.json
+        const trackingFile = path.join(__dirname, 'commit_tracking.json');
+        await git.add([filePath, trackingFile]);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
