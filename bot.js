@@ -97,8 +97,15 @@ function shouldCommitNow() {
     let tracking = {};
     if (fs.existsSync(trackingFile)) {
         try {
-            tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+            const content = fs.readFileSync(trackingFile, 'utf8');
+            tracking = JSON.parse(content);
+            
+            // Validate tracking object
+            if (!tracking.date || !tracking.hasOwnProperty('count') || !tracking.targetCommits) {
+                throw new Error('Invalid tracking data structure');
+            }
         } catch (error) {
+            console.log('⚠️ Tracking file corrupted, reinitializing:', error.message);
             tracking = {};
         }
     }
@@ -132,8 +139,8 @@ function shouldCommitNow() {
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     console.log('✅ tracking setelah ditulis!');
     
-    // Remove auto-commit of tracking file to prevent double commits
-    // The tracking file will be committed as part of the main activity commit
+    // Tracking file will be committed together with activity in makeCommit()
+    // This ensures 1:1 ratio between count and actual commits
 
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
@@ -287,7 +294,7 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push (include tracking file in the main commit)
+        // Commit and push (include tracking file to ensure it's saved)
         await git.add([filePath, path.join(__dirname, 'commit_tracking.json')]);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
