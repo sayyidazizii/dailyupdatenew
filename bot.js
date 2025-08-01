@@ -200,6 +200,24 @@ async function safeStashPop() {
     }
 }
 
+function addLog(message, type = 'INFO') {
+    const filePath = path.join(__dirname, 'daily_update.txt');
+    const timestamp = new Date().toLocaleString('en-US', { 
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: 'short', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+    
+    const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
+    fs.appendFileSync(filePath, logEntry);
+    console.log(`${type}: ${message}`);
+}
+
 async function makeCommit() {
     if (process.env.GITHUB_ACTIONS) {
         console.log('🔄 Running in GitHub Actions - skipping lock check');
