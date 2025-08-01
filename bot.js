@@ -271,6 +271,9 @@ async function makeCommit() {
             }
         }
 
+
+        const trackingContentBefore = fs.readFileSync(path.join(__dirname, 'commit_tracking.json'), 'utf8');
+        addLog(`DEBUG tracking before commit: ${trackingContentBefore}`, 'DEBUG');
         // SINGLE combined commit: tracking + daily update
         await git.add([filePath, 'commit_tracking.json']);
         await git.commit(commitMessage);
@@ -302,15 +305,20 @@ async function makeCommit() {
         // Auto-merge with squash and delete branch (immediate)
         const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch`);
         if (mergeResult.success) {
-            addLog('🧹 PR squash-merged and branch deleted', 'CLEANUP');
-            // Sync local main to reflect the merge
-            await git.checkout('main');
-            await git.pull('origin', 'main');
-            addLog('🔄 Local main updated after squash merge', 'SYNC');
-        } else {
-            addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
-            // PR tetap terbuka untuk merge manual
+            // Sinkronisasi main lokal paksa tanpa conflict dari daily_update.txt
+            await git.fetch();
+            // paksa checkout main (abaikan dirty state)
+            try {
+                await git.checkout('main');
+            } catch {
+                // fallback paksa
+                await git.checkout(['-f', 'main']);
+            }
+            // pastikan lokal identik dengan remote yang sudah ter-merge
+            await git.reset(['--hard', 'origin/main']);
+            addLog('🧹 PR squash-merged and local main force-synced', 'CLEANUP');
         }
+
 
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
