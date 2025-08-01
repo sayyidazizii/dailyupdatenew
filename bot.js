@@ -242,24 +242,22 @@ async function makeCommit() {
 
         addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
-        // Ensure on clean main base
+        // Ensure base is up-to-date main
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
         if (currentBranch !== 'main') {
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
-
         if (!(await syncWithRemote())) return;
 
         // Create feature branch
         await git.checkoutLocalBranch(branchName);
         addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
-        // Append activity log
+        // Apply changes
         const filePath = path.join(__dirname, 'daily_update.txt');
         fs.appendFileSync(filePath, `Activity: ${activity}\n`);
 
-        // Optional progress messages
         const progressMessages = [
             '🔍 Analyzing requirements',
             '⚡ Implementing solution',
@@ -273,7 +271,7 @@ async function makeCommit() {
             }
         }
 
-        // ONE combined commit: tracking + update
+        // SINGLE combined commit: tracking + daily update
         await git.add([filePath, 'commit_tracking.json']);
         await git.commit(commitMessage);
         addLog(`✅ Single combined commit: ${commitMessage}`, 'COMMIT');
@@ -281,31 +279,17 @@ async function makeCommit() {
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed: ${branchName}`, 'PUSH');
 
-        // Create PR
+        // Create PR only (no auto-merge)
         const prTitle = `[Auto] ${commitMessage}`;
-        const prBody = `Automated PR for ${activity}`;
+        const prBody = `Automated PR for ${activity}\n\nThis PR contains a single combined commit updating tracking progress and activity log. Merge manually when ready.`;
         const prResult = execSafeSync(`gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName}`);
 
         if (prResult.success) {
             addLog('🔀 Pull request created via GitHub CLI', 'PR');
-
             const prNumberMatch = prResult.output.match(/(\d+)$/);
             if (prNumberMatch) {
                 const prNum = prNumberMatch[1];
                 addLog(`📋 PR #${prNum} created successfully`, 'PR');
-
-                // Merge with squash so main only gets this one commit
-                const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch --confirm`);
-                if (mergeResult.success) {
-                    addLog('🧹 PR squash-merged and branch deleted', 'CLEANUP');
-                    // Sync local main to reflect merged tracking
-                    await git.checkout('main');
-                    await git.pull('origin', 'main');
-                    addLog('🔄 Local main updated after squash merge', 'SYNC');
-                } else {
-                    addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
-                    await attemptManualMerge(branchName);
-                }
             }
         } else {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
