@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 6) + 5 // 8–15
+            targetCommits: Math.floor(Math.random() * 6) + 5 // 5–10 misal
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -120,26 +120,17 @@ function shouldCommitNow() {
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
 
-    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-    const shouldCommit = tracking.count < tracking.targetCommits && true;
+    const shouldCommit = tracking.count < tracking.targetCommits;
 
     if (shouldCommit) {
         tracking.count += 1;
     }
 
-    console.log('📍 trackingFile:', trackingFile);
-    console.log('📝 tracking sebelum ditulis:', tracking);
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    console.log('✅ tracking setelah ditulis!');
-    
-    execSafeSync(`git add commit_tracking.json`);
-    execSafeSync(`git commit -m "📊 Update tracking progress"`);
-    execSafeSync(`git push`);
-
-
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return shouldCommit;
+    return { shouldCommit, tracking };
 }
+
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
@@ -236,7 +227,8 @@ async function makeCommit() {
     }
 
     try {
-        if (!shouldCommitNow()) {
+        const { shouldCommit, tracking } = shouldCommitNow();
+        if (!shouldCommit) {
             console.log('⏭️  Skipping commit this time - maintaining natural frequency');
             return;
         }
@@ -245,7 +237,9 @@ async function makeCommit() {
 
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
-        const commitMessage = getRandomCommitMessage();
+        const randomMsg = getRandomCommitMessage();
+        const trackingSummary = `Progress ${tracking.count}/${tracking.targetCommits}`;
+        const commitMessage = `${randomMsg} | ${activity} | ${trackingSummary}`;
 
         addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
@@ -288,8 +282,8 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push
-        await git.add(filePath);
+        // Commit tracking + activity in one go
+        await git.add([filePath, 'commit_tracking.json']);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
@@ -328,6 +322,7 @@ async function makeCommit() {
         addLog('─'.repeat(60), 'SEPARATOR');
     }
 }
+
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
