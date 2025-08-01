@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 8) + 8 // 8–15
+            targetCommits: Math.floor(Math.random() * 6) + 5 // 8–15
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -125,8 +125,6 @@ function shouldCommitNow() {
 
     if (shouldCommit) {
         tracking.count += 1;
-        // Tambahkan timestamp untuk memastikan file berubah
-        tracking.lastUpdate = new Date().toISOString();
     }
 
     console.log('📍 trackingFile:', trackingFile);
@@ -134,6 +132,9 @@ function shouldCommitNow() {
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     console.log('✅ tracking setelah ditulis!');
     
+    execSafeSync(`git add commit_tracking.json`);
+    execSafeSync(`git commit -m "📊 Update tracking progress"`);
+    execSafeSync(`git push`);
 
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
@@ -287,15 +288,8 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push - include commit_tracking.json in PR
-        const trackingFile = path.join(__dirname, 'commit_tracking.json');
-        addLog(`📁 Adding files to staging: ${filePath}, ${trackingFile}`, 'STAGING');
-        await git.add([filePath, trackingFile]);
-        
-        // Check what's staged
-        const stagedFiles = await git.diff(['--cached', '--name-only']);
-        addLog(`📋 Staged files: ${stagedFiles || 'none'}`, 'STAGING');
-        
+        // Commit and push
+        await git.add(filePath);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
