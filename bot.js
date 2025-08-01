@@ -279,26 +279,43 @@ async function makeCommit() {
         await git.push('origin', branchName);
         addLog(`🚀 Branch pushed: ${branchName}`, 'PUSH');
 
-        // Create PR only (no auto-merge)
+        // Create PR
         const prTitle = `[Auto] ${commitMessage}`;
-        const prBody = `Automated PR for ${activity}\n\nThis PR contains a single combined commit updating tracking progress and activity log. Merge manually when ready.`;
+        const prBody = `Automated PR for ${activity}\n\nThis PR contains a single combined commit updating tracking progress and activity log. It will be merged automatically.`; 
         const prResult = execSafeSync(`gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName}`);
 
-        if (prResult.success) {
-            addLog('🔀 Pull request created via GitHub CLI', 'PR');
-            const prNumberMatch = prResult.output.match(/(\d+)$/);
-            if (prNumberMatch) {
-                const prNum = prNumberMatch[1];
-                addLog(`📋 PR #${prNum} created successfully`, 'PR');
-            }
-        } else {
+        if (!prResult.success) {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
             await cleanupBranch(branchName);
+            return;
+        }
+
+        addLog('🔀 Pull request created via GitHub CLI', 'PR');
+        const prNumberMatch = prResult.output.match(/(\d+)$/);
+        if (!prNumberMatch) {
+            addLog('⚠️ Could not parse PR number from output, aborting auto-merge', 'WARNING');
+            return;
+        }
+        const prNum = prNumberMatch[1];
+        addLog(`📋 PR #${prNum} created successfully`, 'PR');
+
+        // Auto-merge with squash and delete branch
+        const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch --confirm`);
+        if (mergeResult.success) {
+            addLog('🧹 PR squash-merged and branch deleted', 'CLEANUP');
+            // Sync local main to reflect the merge
+            await git.checkout('main');
+            await git.pull('origin', 'main');
+            addLog('🔄 Local main updated after squash merge', 'SYNC');
+        } else {
+            addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
+            // fallback: leave PR for manual merge, optionally cleanup branch if desired
         }
 
     } catch (err) {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
-        await cleanupBranch(branchName);
+        // if branch exists, attempt cleanup
+        // extract branchName safely if needed, or rely on outer context
     } finally {
         if (!process.env.GITHUB_ACTIONS) releaseLock();
         addLog('🏁 Bot execution finished', 'SYSTEM');
