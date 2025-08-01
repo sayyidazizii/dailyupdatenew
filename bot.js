@@ -87,7 +87,7 @@ function getRandomActivity() {
 }
 
 function generateBranchName(activity) {
-    return `auto/${activity.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    return auto/${activity.toLowerCase().replace(/\s+/g, '-')}-${Date.now()};
 }
 
 function shouldCommitNow() {
@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 6) + 5 // 5–10 misal
+            targetCommits: Math.floor(Math.random() * 6) + 5 // 8–15
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -117,20 +117,29 @@ function shouldCommitNow() {
             month: 'short',
             day: '2-digit'
         });
-        fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        fs.appendFileSync(filePath, \n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n);
     }
 
-    const shouldCommit = tracking.count < tracking.targetCommits;
+    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
+    const shouldCommit = tracking.count < tracking.targetCommits && true;
 
     if (shouldCommit) {
         tracking.count += 1;
     }
 
+    console.log('📍 trackingFile:', trackingFile);
+    console.log('📝 tracking sebelum ditulis:', tracking);
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return { shouldCommit, tracking };
-}
+    console.log('✅ tracking setelah ditulis!');
+    
+    execSafeSync(git add commit_tracking.json);
+    execSafeSync(git commit -m "📊 Update tracking progress");
+    execSafeSync(git push);
 
+
+    console.log(Today's progress: ${tracking.count}/${tracking.targetCommits} commits);
+    return shouldCommit;
+}
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
@@ -145,9 +154,9 @@ function addLog(message, type = 'INFO') {
         hour12: false
     });
 
-    const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
+    const logEntry = [${timestamp} WIB] [${type}] ${message}\n;
     fs.appendFileSync(filePath, logEntry);
-    console.log(`${type}: ${message}`);
+    console.log(${type}: ${message});
 }
 
 function execSafeSync(command, options = {}) {
@@ -174,7 +183,7 @@ async function syncWithRemote() {
         addLog('🔄 Synced with remote main branch', 'SYNC');
         return true;
     } catch (error) {
-        addLog(`❌ Failed to sync with remote: ${error.message}`, 'ERROR');
+        addLog(❌ Failed to sync with remote: ${error.message}, 'ERROR');
         return false;
     }
 }
@@ -189,10 +198,10 @@ async function safeStashAndCheckout(targetBranch) {
         }
 
         await git.checkout(targetBranch);
-        addLog(`🔄 Switched to branch: ${targetBranch}`, 'BRANCH');
+        addLog(🔄 Switched to branch: ${targetBranch}, 'BRANCH');
         return true;
     } catch (error) {
-        addLog(`❌ Failed to switch to ${targetBranch}: ${error.message}`, 'ERROR');
+        addLog(❌ Failed to switch to ${targetBranch}: ${error.message}, 'ERROR');
         return false;
     }
 }
@@ -212,7 +221,7 @@ async function safeStashPop() {
         }
         return true;
     } catch (error) {
-        addLog(`⚠️ Failed to restore stash: ${error.message}`, 'WARNING');
+        addLog(⚠️ Failed to restore stash: ${error.message}, 'WARNING');
         return false;
     }
 }
@@ -227,8 +236,7 @@ async function makeCommit() {
     }
 
     try {
-        const { shouldCommit, tracking } = shouldCommitNow();
-        if (!shouldCommit) {
+        if (!shouldCommitNow()) {
             console.log('⏭️  Skipping commit this time - maintaining natural frequency');
             return;
         }
@@ -237,15 +245,13 @@ async function makeCommit() {
 
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
-        const randomMsg = getRandomCommitMessage();
-        const trackingSummary = `Progress ${tracking.count}/${tracking.targetCommits}`;
-        const commitMessage = `${randomMsg} | ${activity} | ${trackingSummary}`;
+        const commitMessage = getRandomCommitMessage();
 
-        addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
+        addLog(🎯 Started working on: ${activity}, 'ACTIVITY');
 
         // In GitHub Actions, we're already on main branch
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-        addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
+        addLog(📍 Current branch: ${currentBranch}, 'BRANCH');
 
         // Ensure we're on main (should already be in GitHub Actions)
         if (currentBranch !== 'main') {
@@ -263,11 +269,11 @@ async function makeCommit() {
 
         // Create new branch from clean main
         await git.checkoutLocalBranch(branchName);
-        addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
+        addLog(🌿 Created and switched to branch: ${branchName}, 'BRANCH');
 
         // Make changes
         const filePath = path.join(__dirname, 'daily_update.txt');
-        fs.appendFileSync(filePath, `Activity: ${activity}\n`);
+        fs.appendFileSync(filePath, Activity: ${activity}\n);
 
         const progressMessages = [
             '🔍 Analyzing requirements',
@@ -282,18 +288,18 @@ async function makeCommit() {
             }
         }
 
-        // Commit tracking + activity in one go
-        await git.add([filePath, 'commit_tracking.json']);
+        // Commit and push
+        await git.add(filePath);
         await git.commit(commitMessage);
-        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        addLog(✅ Commit successful: ${commitMessage}, 'COMMIT');
 
         await git.push('origin', branchName);
-        addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
+        addLog(🚀 Branch pushed to remote: ${branchName}, 'PUSH');
 
         // Create PR
-        const prTitle = `[Auto] ${commitMessage}`;
-        const prBody = `Automated PR for ${activity}`;
-        const prResult = execSafeSync(`gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName}`);
+        const prTitle = [Auto] ${commitMessage};
+        const prBody = Automated PR for ${activity};
+        const prResult = execSafeSync(gh pr create --title "${prTitle}" --body "${prBody}" --base main --head ${branchName});
 
         if (prResult.success) {
             addLog('🔀 Pull request created via GitHub CLI', 'PR');
@@ -301,18 +307,18 @@ async function makeCommit() {
             const prNumberMatch = prResult.output.match(/(\d+)$/);
             if (prNumberMatch) {
                 const prNum = prNumberMatch[1];
-                addLog(`📋 PR #${prNum} created successfully`, 'PR');
+                addLog(📋 PR #${prNum} created successfully, 'PR');
 
                 // Try auto-merge with better error handling
                 await attemptAutoMerge(prNum, branchName);
             }
         } else {
-            addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
+            addLog(❌ PR creation failed: ${prResult.error}, 'ERROR');
             await cleanupBranch(branchName);
         }
 
     } catch (err) {
-        addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
+        addLog(❌ Error during git/PR process: ${err.message}, 'ERROR');
         await cleanupBranch(branchName);
     } finally {
         if (!process.env.GITHUB_ACTIONS) {
@@ -322,7 +328,6 @@ async function makeCommit() {
         addLog('─'.repeat(60), 'SEPARATOR');
     }
 }
-
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
@@ -337,16 +342,16 @@ async function attemptAutoMerge(prNum, branchName) {
             addLog('📦 Committed local changes before attempting auto-merge', 'COMMIT');
         }
 
-        const mergeResult = execSafeSync(`gh pr merge ${prNum} --merge --delete-branch`);
+        const mergeResult = execSafeSync(gh pr merge ${prNum} --merge --delete-branch);
 
         if (mergeResult.success) {
             addLog('🧹 Pull request merged and branch deleted', 'CLEANUP');
         } else {
-            addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
+            addLog(⚠️ Auto-merge failed: ${mergeResult.error}, 'WARNING');
             await attemptManualMerge(branchName);
         }
     } catch (error) {
-        addLog(`❌ Error during merge attempt: ${error.message}`, 'ERROR');
+        addLog(❌ Error during merge attempt: ${error.message}, 'ERROR');
         await cleanupBranch(branchName);
     }
 }
@@ -356,7 +361,7 @@ async function attemptManualMerge(branchName) {
     try {
         // Get current branch first
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-        addLog(`📍 Currently on branch: ${currentBranch}`, 'BRANCH');
+        addLog(📍 Currently on branch: ${currentBranch}, 'BRANCH');
         
         // If we're not on main, switch to main first
         if (currentBranch !== 'main') {
@@ -369,7 +374,7 @@ async function attemptManualMerge(branchName) {
                     addLog('📦 Committed pending changes', 'COMMIT');
                 }
             } catch (commitErr) {
-                addLog(`⚠️ Failed to commit pending changes: ${commitErr.message}`, 'WARNING');
+                addLog(⚠️ Failed to commit pending changes: ${commitErr.message}, 'WARNING');
             }
 
             await git.add('.');
@@ -395,7 +400,7 @@ async function attemptManualMerge(branchName) {
                 addLog('� Changes pushed successfully', 'PUSH');
                 break;
             } catch (pushError) {
-                addLog(`⚠️ Push attempt ${i + 1} failed: ${pushError.message}`, 'WARNING');
+                addLog(⚠️ Push attempt ${i + 1} failed: ${pushError.message}, 'WARNING');
                 if (i < 2) {
                     await syncWithRemote();
                     await git.merge([branchName]);
@@ -411,7 +416,7 @@ async function attemptManualMerge(branchName) {
         await cleanupBranch(branchName);
         
     } catch (manualMergeErr) {
-        addLog(`❌ Manual merge failed: ${manualMergeErr.message}`, 'ERROR');
+        addLog(❌ Manual merge failed: ${manualMergeErr.message}, 'ERROR');
         await cleanupBranch(branchName);
     }
 }
@@ -436,7 +441,7 @@ async function cleanupBranch(branchName) {
         // Delete local branch if exists
         try {
             await git.deleteLocalBranch(branchName);
-            addLog(`🧹 Cleaned up local branch: ${branchName}`, 'CLEANUP');
+            addLog(🧹 Cleaned up local branch: ${branchName}, 'CLEANUP');
         } catch (deleteErr) {
             // Branch might not exist, ignore
         }
@@ -444,7 +449,7 @@ async function cleanupBranch(branchName) {
         await safeStashPop();
 
     } catch (cleanupErr) {
-        addLog(`⚠️ Cleanup failed: ${cleanupErr.message}`, 'WARNING');
+        addLog(⚠️ Cleanup failed: ${cleanupErr.message}, 'WARNING');
     }
 }
 
