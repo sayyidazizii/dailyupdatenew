@@ -107,7 +107,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 6) + 5 // 8–15
+            targetCommits: Math.floor(Math.random() * 6) + 5 // adapt range if desired
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -120,26 +120,17 @@ function shouldCommitNow() {
         fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
 
-    // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
-    const shouldCommit = tracking.count < tracking.targetCommits && true;
+    const shouldCommit = tracking.count < tracking.targetCommits;
 
     if (shouldCommit) {
         tracking.count += 1;
     }
 
-    console.log('📍 trackingFile:', trackingFile);
-    console.log('📝 tracking sebelum ditulis:', tracking);
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    console.log('✅ tracking setelah ditulis!');
-    
-    execSafeSync(`git add commit_tracking.json`);
-    execSafeSync(`git commit -m "📊 Update tracking progress"`);
-    execSafeSync(`git push`);
-
-
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return shouldCommit;
+    return { shouldCommit, tracking };
 }
+
 
 function addLog(message, type = 'INFO') {
     const filePath = path.join(__dirname, 'daily_update.txt');
@@ -227,7 +218,6 @@ async function safeStashPop() {
 }
 
 async function makeCommit() {
-    // Skip lock check in GitHub Actions (each run is isolated)
     if (process.env.GITHUB_ACTIONS) {
         console.log('🔄 Running in GitHub Actions - skipping lock check');
     } else if (!acquireLock()) {
@@ -236,7 +226,8 @@ async function makeCommit() {
     }
 
     try {
-        if (!shouldCommitNow()) {
+        const { shouldCommit, tracking } = shouldCommitNow();
+        if (!shouldCommit) {
             console.log('⏭️  Skipping commit this time - maintaining natural frequency');
             return;
         }
@@ -245,36 +236,30 @@ async function makeCommit() {
 
         const activity = getRandomActivity();
         const branchName = generateBranchName(activity);
-        const commitMessage = getRandomCommitMessage();
+        const randomMsg = getRandomCommitMessage();
+        const trackingSummary = `Progress ${tracking.count}/${tracking.targetCommits}`;
+        const commitMessage = `${randomMsg} | ${activity} | ${trackingSummary}`;
 
         addLog(`🎯 Started working on: ${activity}`, 'ACTIVITY');
 
-        // In GitHub Actions, we're already on main branch
+        // Ensure on clean main base
         const currentBranch = await git.revparse(['--abbrev-ref', 'HEAD']);
-        addLog(`📍 Current branch: ${currentBranch}`, 'BRANCH');
-
-        // Ensure we're on main (should already be in GitHub Actions)
         if (currentBranch !== 'main') {
-            await git.add('.');
-            await git.commit('Temporary commit for manual merge');
-            addLog('📦 Committed pending changes', 'COMMIT');
             await git.checkout('main');
             addLog('🔄 Switched to main branch', 'BRANCH');
         }
 
-        // Sync with remote before any operations
-        if (!(await syncWithRemote())) {
-            return;
-        }
+        if (!(await syncWithRemote())) return;
 
-        // Create new branch from clean main
+        // Create feature branch
         await git.checkoutLocalBranch(branchName);
         addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
-        // Make changes
+        // Append activity log
         const filePath = path.join(__dirname, 'daily_update.txt');
         fs.appendFileSync(filePath, `Activity: ${activity}\n`);
 
+        // Optional progress messages
         const progressMessages = [
             '🔍 Analyzing requirements',
             '⚡ Implementing solution',
@@ -288,13 +273,13 @@ async function makeCommit() {
             }
         }
 
-        // Commit and push
-        await git.add(filePath);
+        // ONE combined commit: tracking + update
+        await git.add([filePath, 'commit_tracking.json']);
         await git.commit(commitMessage);
-        addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
+        addLog(`✅ Single combined commit: ${commitMessage}`, 'COMMIT');
 
         await git.push('origin', branchName);
-        addLog(`🚀 Branch pushed to remote: ${branchName}`, 'PUSH');
+        addLog(`🚀 Branch pushed: ${branchName}`, 'PUSH');
 
         // Create PR
         const prTitle = `[Auto] ${commitMessage}`;
@@ -309,8 +294,18 @@ async function makeCommit() {
                 const prNum = prNumberMatch[1];
                 addLog(`📋 PR #${prNum} created successfully`, 'PR');
 
-                // Try auto-merge with better error handling
-                await attemptAutoMerge(prNum, branchName);
+                // Merge with squash so main only gets this one commit
+                const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch --confirm`);
+                if (mergeResult.success) {
+                    addLog('🧹 PR squash-merged and branch deleted', 'CLEANUP');
+                    // Sync local main to reflect merged tracking
+                    await git.checkout('main');
+                    await git.pull('origin', 'main');
+                    addLog('🔄 Local main updated after squash merge', 'SYNC');
+                } else {
+                    addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
+                    await attemptManualMerge(branchName);
+                }
             }
         } else {
             addLog(`❌ PR creation failed: ${prResult.error}`, 'ERROR');
@@ -321,13 +316,12 @@ async function makeCommit() {
         addLog(`❌ Error during git/PR process: ${err.message}`, 'ERROR');
         await cleanupBranch(branchName);
     } finally {
-        if (!process.env.GITHUB_ACTIONS) {
-            releaseLock();
-        }
+        if (!process.env.GITHUB_ACTIONS) releaseLock();
         addLog('🏁 Bot execution finished', 'SYSTEM');
         addLog('─'.repeat(60), 'SEPARATOR');
     }
 }
+
 
 async function attemptAutoMerge(prNum, branchName) {
     try {
