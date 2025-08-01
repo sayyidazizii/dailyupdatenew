@@ -99,6 +99,7 @@ function shouldCommitNow() {
         try {
             tracking = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
         } catch (error) {
+            console.warn('⚠️ Failed to parse existing tracking file, resetting.', error);
             tracking = {};
         }
     }
@@ -107,7 +108,7 @@ function shouldCommitNow() {
         tracking = {
             date: today,
             count: 0,
-            targetCommits: Math.floor(Math.random() * 6) + 5 // adapt range if desired
+            targetCommits: Math.floor(Math.random() * 6) + 5 // 5–10, atau sesuai kebutuhan
         };
 
         const filePath = path.join(__dirname, 'daily_update.txt');
@@ -126,45 +127,27 @@ function shouldCommitNow() {
         tracking.count += 1;
     }
 
-    fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
-    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
-    return { shouldCommit, tracking };
-}
-
-
-function addLog(message, type = 'INFO') {
-    const filePath = path.join(__dirname, 'daily_update.txt');
-    const timestamp = new Date().toLocaleString('en-US', {
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
-
-    const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
-    fs.appendFileSync(filePath, logEntry);
-    console.log(`${type}: ${message}`);
-}
-
-function execSafeSync(command, options = {}) {
+    // Write and verify
     try {
-        const result = execSync(command, {
-            encoding: 'utf8',
-            stdio: 'pipe',
-            ...options
-        });
-        return { success: true, output: result.trim() };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message,
-            output: error.stdout ? error.stdout.trim() : ''
-        };
+        fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
+    } catch (writeErr) {
+        console.error('❌ Failed to write tracking file:', writeErr);
     }
+
+    // Read back to confirm
+    let onDisk = null;
+    try {
+        onDisk = JSON.parse(fs.readFileSync(trackingFile, 'utf8'));
+    } catch (readErr) {
+        console.error('❌ Failed to re-read tracking file after write:', readErr);
+    }
+
+    console.log('📍 trackingFile:', trackingFile);
+    console.log('📝 tracking (in-memory):', tracking);
+    console.log('🧐 tracking (on-disk):', onDisk);
+    console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
+
+    return { shouldCommit, tracking };
 }
 
 async function syncWithRemote() {
