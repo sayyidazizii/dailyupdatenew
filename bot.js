@@ -299,8 +299,8 @@ async function makeCommit() {
         const prNum = prNumberMatch[1];
         addLog(`📋 PR #${prNum} created successfully`, 'PR');
 
-        // Auto-merge with squash and delete branch
-        const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch --confirm`);
+        // Auto-merge with squash and delete branch (immediate)
+        const mergeResult = execSafeSync(`gh pr merge ${prNum} --squash --delete-branch`);
         if (mergeResult.success) {
             addLog('🧹 PR squash-merged and branch deleted', 'CLEANUP');
             // Sync local main to reflect the merge
@@ -309,7 +309,7 @@ async function makeCommit() {
             addLog('🔄 Local main updated after squash merge', 'SYNC');
         } else {
             addLog(`⚠️ Auto-merge failed: ${mergeResult.error}`, 'WARNING');
-            // fallback: leave PR for manual merge, optionally cleanup branch if desired
+            // PR tetap terbuka untuk merge manual
         }
 
     } catch (err) {
