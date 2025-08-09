@@ -110,14 +110,14 @@ function shouldCommitNow() {
             targetCommits: Math.floor(Math.random() * 6) + 5 // 8–15
         };
 
-        const filePath = path.join(__dirname, 'daily_update.txt');
-        const timestamp = new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Jakarta',
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit'
-        });
-        fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        //const filePath = path.join(__dirname, 'daily_update.txt');
+        //const timestamp = new Date().toLocaleString('en-US', {
+        //     timeZone: 'Asia/Jakarta',
+        //     year: 'numeric',
+        //     month: 'short',
+        //     day: '2-digit'
+        // });
+        // fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
 
     // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
@@ -155,7 +155,7 @@ function addLog(message, type = 'INFO') {
     });
 
     const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
-    fs.appendFileSync(filePath, logEntry);
+    // fs.appendFileSync(filePath, logEntry);
     console.log(`${type}: ${message}`);
 }
 
@@ -272,8 +272,8 @@ async function makeCommit() {
         addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
         // Make changes
-        const filePath = path.join(__dirname, 'daily_update.txt');
-        fs.appendFileSync(filePath, `Activity: ${activity}\n`);
+        // const filePath = path.join(__dirname, 'daily_update.txt');
+        // fs.appendFileSync(filePath, `Activity: ${activity}\n`);
 
         const progressMessages = [
             '🔍 Analyzing requirements',
