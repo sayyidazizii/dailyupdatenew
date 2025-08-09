@@ -155,7 +155,7 @@ function addLog(message, type = 'INFO') {
     });
 
     const logEntry = `[${timestamp} WIB] [${type}] ${message}\n`;
-    // fs.appendFileSync(filePath, logEntry);
+    fs.appendFileSync(filePath, logEntry);
     console.log(`${type}: ${message}`);
 }
 
@@ -272,8 +272,8 @@ async function makeCommit() {
         addLog(`🌿 Created and switched to branch: ${branchName}`, 'BRANCH');
 
         // Make changes
-        // const filePath = path.join(__dirname, 'daily_update.txt');
-        // fs.appendFileSync(filePath, `Activity: ${activity}\n`);
+        const filePath = path.join(__dirname, 'daily_update.txt');
+        fs.appendFileSync(filePath, `Activity: ${activity}\n`);
 
         const progressMessages = [
             '🔍 Analyzing requirements',
