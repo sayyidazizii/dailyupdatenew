@@ -111,13 +111,13 @@ function shouldCommitNow() {
         };
 
         //const filePath = path.join(__dirname, 'daily_update.txt');
-        //const timestamp = new Date().toLocaleString('en-US', {
-        //     timeZone: 'Asia/Jakarta',
-        //     year: 'numeric',
-        //     month: 'short',
-        //     day: '2-digit'
-        // });
-        // fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
+        const timestamp = new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit'
+        });
+        fs.appendFileSync(filePath, `\n🌅 === NEW DAY: ${timestamp} === Target: ${tracking.targetCommits} commits ===\n\n`);
     }
 
     // const shouldCommit = tracking.count < tracking.targetCommits && Math.random() > 0.3;
