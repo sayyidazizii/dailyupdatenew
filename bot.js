@@ -37,7 +37,6 @@ function updateDailyLog() {
 
 // Commit & push perubahan
 async function makeCommit() {
-    // Cek apakah branch sudah ada
     const branches = await git.branchLocal();
     if (!branches.all.includes(BRANCH_NAME)) {
         await git.checkoutLocalBranch(BRANCH_NAME);
@@ -64,13 +63,16 @@ function createPullRequest() {
     }
 }
 
-// Merge PR & hapus branch
+// Merge PR otomatis & hapus branch
 function mergeAndDeleteBranch() {
     try {
-        execSync(`gh pr merge --merge --delete-branch --auto`, { stdio: 'inherit' });
+        execSync(
+            `gh pr merge --merge --delete-branch --auto`,
+            { stdio: 'inherit' }
+        );
         console.log('✅ PR berhasil di-merge dan branch dihapus');
     } catch (err) {
-        console.log('⚠️ Gagal merge/hapus branch. Mungkin PR belum dibuat atau sudah di-merge.');
+        console.log('⚠️ Gagal merge PR atau PR sudah di-merge sebelumnya.');
     }
 }
 
