@@ -132,9 +132,9 @@ function shouldCommitNow() {
     fs.writeFileSync(trackingFile, JSON.stringify(tracking, null, 2));
     console.log('✅ tracking setelah ditulis!');
     
-    execSafeSync(`git add commit_tracking.json`);
-    execSafeSync(`git commit -m "📊 Update tracking progress"`);
-    execSafeSync(`git push`);
+    // execSafeSync(`git add commit_tracking.json`);
+    // execSafeSync(`git commit -m "📊 Update tracking progress"`);
+    // execSafeSync(`git push`);
 
 
     console.log(`Today's progress: ${tracking.count}/${tracking.targetCommits} commits`);
@@ -289,7 +289,8 @@ async function makeCommit() {
         }
 
         // Commit and push
-        await git.add(filePath);
+        // await git.add(filePath);
+        await git.add([filePath, 'commit_tracking.json']);
         await git.commit(commitMessage);
         addLog(`✅ Commit successful: ${commitMessage}`, 'COMMIT');
 
