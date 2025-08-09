@@ -64,6 +64,16 @@ function createPullRequest() {
     }
 }
 
+// Merge PR & hapus branch
+function mergeAndDeleteBranch() {
+    try {
+        execSync(`gh pr merge --merge --delete-branch --auto`, { stdio: 'inherit' });
+        console.log('✅ PR berhasil di-merge dan branch dihapus');
+    } catch (err) {
+        console.log('⚠️ Gagal merge/hapus branch. Mungkin PR belum dibuat atau sudah di-merge.');
+    }
+}
+
 // Jalankan proses
 (async () => {
     initTracking();
@@ -71,4 +81,5 @@ function createPullRequest() {
     updateDailyLog();
     await makeCommit();
     createPullRequest();
+    mergeAndDeleteBranch();
 })();
